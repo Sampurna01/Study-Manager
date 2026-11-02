@@ -2,8 +2,9 @@
 
 Give it your course material and it gets you ready for the exam.
 
-Upload lecture notes, slides exported to PDF, textbook chapters or a syllabus (or paste text), and Study Manager uses AI to build:
+Upload your syllabus, lecture notes, slides exported to PDF, textbook chapters, assignments or past exams (or paste text). Study Manager identifies what each file is and uses AI to build:
 
+- **Your syllabus, read for you.** It pulls out the weekly schedule (with the current week highlighted), every exam and assignment with its date and grade weight, learning outcomes and required materials. Weeks and exams are linked to study-guide topics, exam dates feed straight into the study plan, the Overview shows your next deadline, and topics the syllabus lists but your notes don't cover are flagged. You can add a syllabus to an existing course from the Syllabus tab.
 - **An interactive study guide.** The material is split into ordered topics, each with a summary, key points, difficulty, prerequisites and a time estimate. Select any passage to get it explained, click underlined terms to see their definitions, tick off key points as you learn them, and take a quick three-question check inside each topic. You also get learning objectives and a searchable glossary.
 - **Flashcards with spaced repetition.** Cards are generated per topic and scheduled with an SM‑2 style algorithm (Again / Hard / Good / Easy), so cards you find hard come back sooner.
 - **Adaptive quizzes.** Three modes: *Practice*, *Weak spots* (targets your lowest‑mastery topics and common misconceptions) and *Mock exam*. Multiple‑choice answers are checked straight away. Short answers are graded by the AI, with feedback and the points you missed.

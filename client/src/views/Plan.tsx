@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Course } from "../types";
 import { buildPlan, toDateKey, type PlanItem } from "../../../shared/plan";
+import { EXAM_TYPES, countdown, formatDate, upcomingAssessments } from "./Syllabus";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 
@@ -27,7 +28,14 @@ function itemHref(course: Course, item: PlanItem) {
 }
 
 export function Plan({ course, mastery, set }: { course: Course; mastery: Record<string, number>; set: Set_ }) {
-  const [examDate, setExamDate] = useState(course.plan?.examDate ?? defaultExamDate());
+  const fromLink = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("exam");
+  const upcomingExams = upcomingAssessments(course.syllabus).filter((a) => EXAM_TYPES.has(a.type) && a.date > toDateKey(new Date()));
+  const [examDate, setExamDate] = useState(
+    (fromLink && /^\d{4}-\d{2}-\d{2}$/.test(fromLink) ? fromLink : null) ??
+      course.plan?.examDate ??
+      upcomingExams[0]?.date ??
+      defaultExamDate(),
+  );
   const [minutes, setMinutes] = useState(course.plan?.minutesPerDay ?? 60);
   const todayKey = toDateKey(new Date());
 
@@ -68,6 +76,20 @@ export function Plan({ course, mastery, set }: { course: Course; mastery: Record
     <div className="plan">
       <div className="card">
         <h2>Your exam</h2>
+        {upcomingExams.length > 0 && (
+          <div className="exam-picks">
+            <span className="small muted">From your syllabus:</span>
+            {upcomingExams.map((a) => (
+              <button
+                key={a.name + a.date}
+                className={`chip toggle ${examDate === a.date ? "on" : ""}`}
+                onClick={() => setExamDate(a.date)}
+              >
+                {a.name} · {formatDate(a.date)} ({countdown(a.date)})
+              </button>
+            ))}
+          </div>
+        )}
         <div className="row wrap">
           <label className="inline-field">
             Exam date

@@ -30,8 +30,8 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
   const params = hashParams();
   const [mode, setMode] = useState<Mode>(() => (MODES.some((m) => m.id === params.get("mode")) ? (params.get("mode") as Mode) : "practice"));
   const [selected, setSelected] = useState<string[]>(() => {
-    const t = params.get("topic");
-    return t && names.has(t) ? [t] : topics.map((x) => x.id);
+    const ids = (params.get("topic") ?? "").split(",").filter((id) => names.has(id));
+    return ids.length ? ids : topics.map((x) => x.id);
   });
   const [count, setCount] = useState(8);
   const [questions, setQuestions] = useState<Question[] | null>(null);

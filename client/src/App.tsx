@@ -9,10 +9,12 @@ import { Flashcards } from "./views/Flashcards";
 import { Quiz } from "./views/Quiz";
 import { Tutor } from "./views/Tutor";
 import { Plan } from "./views/Plan";
+import { Syllabus } from "./views/Syllabus";
 import { isDue } from "../../shared/srs";
 
 export const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "syllabus", label: "Syllabus" },
   { id: "guide", label: "Study guide" },
   { id: "flashcards", label: "Flashcards" },
   { id: "quiz", label: "Quiz" },
@@ -181,6 +183,7 @@ function CourseView({
         {tab === "quiz" && <Quiz course={course} mastery={mastery} set={set} />}
         {tab === "tutor" && <Tutor course={course} mastery={mastery} set={set} />}
         {tab === "plan" && <Plan course={course} mastery={mastery} set={set} />}
+        {tab === "syllabus" && <Syllabus course={course} set={set} />}
       </section>
     </div>
   );

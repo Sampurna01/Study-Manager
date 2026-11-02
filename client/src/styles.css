@@ -406,3 +406,46 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 .iq-prompt { font-weight: 600; margin-bottom: 0.5rem; }
 .options.compact .option { padding: 0.5rem 0.7rem; }
 .feedback.small { margin-top: 0.5rem; padding: 0.7rem 0.8rem; }
+
+/* ---------- Sources & syllabus ---------- */
+.source-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kind-select { padding: 0.3rem 0.5rem; font-size: 0.85rem; }
+.kind-select.syllabus { border-color: var(--accent); background: var(--accent-soft); }
+.chip.identifying { background: var(--mid-soft); border-color: transparent; }
+@media (max-width: 640px) { .sources li { flex-wrap: wrap; } .source-info { flex-basis: 100%; } }
+.chip.gap { background: var(--mid-soft); border-color: var(--mid); }
+.chip.now { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.chip.link-chip { text-decoration: none; color: var(--text); }
+.chip.link-chip:hover { border-color: var(--accent); color: var(--accent); }
+.topic-chips { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end; }
+.syllabus-head { display: flex; justify-content: space-between; gap: 1.5rem; align-items: flex-start; }
+.syllabus-head h2 { font-size: 1.3rem; margin-bottom: 0.1rem; }
+.next-exam {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; flex-shrink: 0;
+  background: var(--accent-soft); border-radius: 10px; padding: 0.8rem 1rem; min-width: 180px;
+}
+.next-exam .countdown { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+.next-exam .btn { margin-top: 0.4rem; }
+.table-wrap { overflow-x: auto; }
+.assessments { width: 100%; border-collapse: collapse; }
+.assessments th { text-align: left; font-size: 0.8rem; color: var(--muted); font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+.assessments td { padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.assessments tr:last-child td { border-bottom: none; }
+.assessments tr.past { opacity: 0.55; }
+.assessments td .btn { margin: 0 0.2rem 0.2rem 0; }
+.weight { display: flex; flex-direction: column; gap: 0.25rem; min-width: 60px; }
+.weight-bar { height: 5px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.weight-bar div { height: 100%; background: var(--accent); }
+.schedule { list-style: none; padding: 0; margin: 0; }
+.schedule li { display: grid; grid-template-columns: 160px 1fr; gap: 1rem; padding: 0.75rem 0.6rem; border-bottom: 1px solid var(--border); border-radius: 8px; }
+.schedule li:last-child { border-bottom: none; }
+.schedule li.current { background: var(--accent-soft); border-bottom-color: transparent; }
+.schedule li.done .schedule-when strong { color: var(--muted); }
+.schedule-when { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+.schedule-what p { margin: 0 0 0.35rem; }
+.exam-picks { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.6rem; }
+@media (max-width: 720px) {
+  .syllabus-head { flex-direction: column; }
+  .schedule li { grid-template-columns: 1fr; gap: 0.3rem; }
+}

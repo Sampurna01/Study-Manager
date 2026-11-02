@@ -105,6 +105,41 @@ describe("API", () => {
     expect(res.body.error).toBe("rate limited");
   });
 
+  it("classifies a document from its opening", async () => {
+    generateStructured.mockResolvedValueOnce({ kind: "syllabus", title: "BIO 101", summary: "Course outline" });
+    const res = await request(app).post("/api/classify").send({ name: "outline.pdf", text: "Week 1: Cells" });
+    expect(res.body.classification.kind).toBe("syllabus");
+    expect(generateStructured.mock.calls.at(-1)![0].task).toContain("outline.pdf");
+  });
+
+  it("cleans up an extracted syllabus", async () => {
+    generateStructured.mockResolvedValueOnce({
+      courseName: "Bio",
+      courseCode: "BIO 101",
+      instructor: "",
+      term: "Fall 2026",
+      description: "",
+      learningOutcomes: [],
+      requiredMaterials: [],
+      schedule: [{ label: "Week 1", date: "2026-09-02", topics: ["Cells"], readings: [], topicIds: ["cells", "made-up"] }],
+      assessments: [
+        { name: "Midterm", type: "midterm", weightPercent: 30, date: "2026-10-15", details: "", topicIds: ["dna"] },
+        { name: "Final", type: "final", weightPercent: 250, date: "Dec 10", details: "", topicIds: [] },
+      ],
+    });
+    const res = await request(app).post("/api/syllabus").send({ text: "syllabus", topics, today: "2026-09-01" });
+    expect(res.status).toBe(200);
+    const { schedule, assessments } = res.body.syllabus;
+    expect(schedule[0].topicIds).toEqual(["cells"]);
+    expect(assessments[0]).toMatchObject({ date: "2026-10-15", weightPercent: 30, topicIds: ["dna"] });
+    expect(assessments[1]).toMatchObject({ date: "", weightPercent: -1 });
+  });
+
+  it("requires today's date for syllabus extraction", async () => {
+    const res = await request(app).post("/api/syllabus").send({ text: "syllabus", today: "tomorrow" });
+    expect(res.status).toBe(400);
+  });
+
   it("streams tutor replies", async () => {
     const res = await request(app)
       .post("/api/tutor")

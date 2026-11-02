@@ -1,8 +1,8 @@
-import type { StudyGuide, Question, Grade } from "../../shared/schemas";
+import type { StudyGuide, Question, Grade, Syllabus, SourceKind } from "../../shared/schemas";
 import type { CardSchedule } from "../../shared/srs";
 import type { QuizAttempt } from "../../shared/mastery";
 
-export type { StudyGuide, Question, Grade, CardSchedule, QuizAttempt };
+export type { StudyGuide, Question, Grade, CardSchedule, QuizAttempt, Syllabus, SourceKind };
 
 export interface Flashcard {
   id: string;
@@ -38,7 +38,7 @@ export interface Course {
   createdAt: string;
   updatedAt: string;
   content: string;
-  sources: { name: string; chars: number }[];
+  sources: { name: string; chars: number; kind?: SourceKind; summary?: string }[];
   guide: StudyGuide;
   cards: Flashcard[];
   attempts: QuizAttempt[];
@@ -47,4 +47,6 @@ export interface Course {
   plan?: PlanSettings;
   /** Key points the student has ticked off in the study guide, as "topicId|index". */
   checked?: string[];
+  /** Structure read from the course syllabus, if one was provided. */
+  syllabus?: Syllabus;
 }

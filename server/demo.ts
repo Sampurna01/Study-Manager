@@ -6,6 +6,9 @@
  */
 import type { z } from "zod/v4";
 import type {
+  Classification,
+  Syllabus,
+  SyllabusRequestSchema,
   FlashcardDraft,
   FlashcardRequestSchema,
   Grade,
@@ -14,7 +17,7 @@ import type {
   QuizRequestSchema,
   StudyGuide,
 } from "../shared/schemas";
-import { normalizeGuide } from "./study";
+import { normalizeGuide, normalizeSyllabus } from "./study";
 
 export const DEMO = process.env.STUDY_MANAGER_DEMO === "1";
 
@@ -51,8 +54,15 @@ function sections(content: string): Section[] {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+/** Teaching material only: drop syllabus documents and the "===== file (Type) =====" headers. */
+function teachingText(content: string): string {
+  const parts = content.split(/\n(?======)/);
+  const teaching = parts.filter((p) => !/^===== .* \(Syllabus\) =====/.test(p));
+  return (teaching.length ? teaching : parts).map((p) => p.replace(/^===== .* =====\n?/, "")).join("\n\n");
+}
+
 export function demoGuide(title: string, content: string): StudyGuide {
-  const secs = sections(content);
+  const secs = sections(teachingText(content));
   const glossary = secs.flatMap((s) =>
     s.sentences
       .map((sentence) => sentence.match(/^(?:An?|The)?\s*([A-Z][\w -]{2,40}?)\s+(?:is|are|refers to|means)\s+(.+)$/))
@@ -71,13 +81,14 @@ export function demoGuide(title: string, content: string): StudyGuide {
       difficulty: i < secs.length / 3 ? "foundational" : i < (2 * secs.length) / 3 ? "intermediate" : "advanced",
       prerequisites: i > 0 ? [slug(secs[i - 1].heading)] : [],
       estimatedMinutes: Math.min(60, 10 + s.sentences.length * 4),
+      syllabusOnly: false,
     })),
     glossary: glossary.slice(0, 30),
   });
 }
 
 function sentencesFor(content: string, topicName: string): string[] {
-  const secs = sections(content);
+  const secs = sections(teachingText(content));
   return secs.find((s) => s.heading === topicName)?.sentences ?? secs.flatMap((s) => s.sentences);
 }
 
@@ -184,4 +195,98 @@ export async function demoTutor(
     onText(chunk);
     await new Promise((r) => setTimeout(r, 15));
   }
+}
+
+// ---- Identifying documents and reading syllabi (keyword heuristics) --------
+
+const SYLLABUS_SIGNS = [/syllabus/i, /course (outline|schedule)/i, /grading|grade breakdown/i, /office hours/i, /learning outcomes/i, /\bweek\s*\d+/i, /\d+\s*%/, /midterm|final exam/i, /instructor/i];
+
+export function demoClassify(name: string, text: string): Classification {
+  const head = text.slice(0, 12_000);
+  const score = SYLLABUS_SIGNS.filter((r) => r.test(head)).length;
+  const lowerName = name.toLowerCase();
+  let kind: Classification["kind"] = "lecture_notes";
+  if (score >= 3 || /syllab|outline/.test(lowerName)) kind = "syllabus";
+  else if (/exam|test|midterm|final/.test(lowerName)) kind = "past_exam";
+  else if (/assign|homework|hw|problem set|pset/.test(lowerName)) kind = "assignment";
+  else if (/slide|lecture/.test(lowerName)) kind = /slide/.test(lowerName) ? "slides" : "lecture_notes";
+  else if (/chapter|textbook|reading/.test(lowerName)) kind = "textbook";
+  const firstLine = text.split(/\n/).map((l) => l.replace(/^#+\s*/, "").trim()).find(Boolean) ?? name;
+  return { kind, title: firstLine.slice(0, 80), summary: `Demo mode guess based on keywords (${kind.replace("_", " ")}).` };
+}
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+function findDate(line: string, today: string): string {
+  const iso = line.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (iso) return iso[0];
+  const md = line.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/i);
+  if (!md) return "";
+  const year = Number(today.slice(0, 4));
+  const month = MONTHS.indexOf(md[1].toLowerCase().slice(0, 3)) + 1;
+  return `${year}-${String(month).padStart(2, "0")}-${String(Number(md[2])).padStart(2, "0")}`;
+}
+
+export function demoSyllabus(req: z.infer<typeof SyllabusRequestSchema>): Syllabus {
+  const lines = req.text.split(/\r?\n/).map((l) => l.replace(/^[-*#\s]+/, "").trim()).filter(Boolean);
+  const topicIds = new Set(req.topics.map((t) => t.id));
+  const matchTopics = (text: string) =>
+    req.topics.filter((t) => text.toLowerCase().includes(t.name.toLowerCase())).map((t) => t.id);
+  const schedule = lines
+    .filter((l) => /^(week|lecture|unit|module|session)\s*\d+/i.test(l))
+    .map((l) => {
+      const label = l.match(/^(week|lecture|unit|module|session)\s*\d+/i)![0];
+      const afterLabel = l.slice(label.length).replace(/^\s*\([^)]*\)/, "").replace(/^[\s:\u2013\u2014-]+/, "");
+      const [body, ...readings] = afterLabel.split(/\.?\s*Readings?:\s*/i);
+      return {
+        label,
+        date: findDate(l, req.today),
+        topics: [body.trim() || l],
+        readings: readings.map((r) => r.trim()).filter(Boolean),
+        topicIds: matchTopics(body),
+      };
+    });
+  const assessments = lines
+    .filter((l) => /\d+\s*%/.test(l) || /\b(midterm|final exam|quiz|assignment|project)\b/i.test(l))
+    .filter((l) => !/^(week|lecture|unit|module|session)\s*\d+/i.test(l))
+    .map((l) => {
+      const lower = l.toLowerCase();
+      const type: Syllabus["assessments"][number]["type"] = /midterm/.test(lower)
+        ? "midterm"
+        : /final/.test(lower)
+          ? "final"
+          : /quiz/.test(lower)
+            ? "quiz"
+            : /project/.test(lower)
+              ? "project"
+              : /assignment|homework/.test(lower)
+                ? "assignment"
+                : /exam/.test(lower)
+                  ? "exam"
+                  : "other";
+      const weight = l.match(/(\d+(?:\.\d+)?)\s*%/);
+      return {
+        name: l.split(/[:(\u2013\u2014]|\s-\s|\d+\s*%/)[0].trim() || l,
+        type,
+        weightPercent: weight ? Number(weight[1]) : -1,
+        date: findDate(l, req.today),
+        details: "",
+        topicIds: [],
+      };
+    });
+  const title = lines[0] ?? "Course";
+  return normalizeSyllabus(
+    {
+      courseName: title.replace(/syllabus/i, "").trim() || title,
+      courseCode: title.match(/\b[A-Z]{2,4}\s?\d{3}\b/)?.[0] ?? "",
+      instructor: lines.find((l) => /^instructor|^professor|^lecturer/i.test(l))?.replace(/^[^:]*:\s*/, "") ?? "",
+      term: lines.find((l) => /\b(fall|spring|summer|winter)\s+\d{4}\b/i.test(l))?.match(/\b(fall|spring|summer|winter)\s+\d{4}\b/i)?.[0] ?? "",
+      description: "Demo mode: details read with simple keyword matching.",
+      learningOutcomes: [],
+      schedule,
+      assessments,
+      requiredMaterials: [],
+    },
+    topicIds,
+  );
 }

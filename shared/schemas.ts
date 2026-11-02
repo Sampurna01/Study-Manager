@@ -14,6 +14,9 @@ export const TopicSchema = z.object({
   difficulty: z.enum(["foundational", "intermediate", "advanced"]),
   prerequisites: z.array(z.string()).describe("ids of topics in this guide that should be learned first"),
   estimatedMinutes: z.number().int().describe("Minutes a typical student needs to learn this topic the first time"),
+  syllabusOnly: z
+    .boolean()
+    .describe("true only if a syllabus lists this topic but the other materials don't actually teach it"),
 });
 export type Topic = z.infer<typeof TopicSchema>;
 
@@ -57,6 +60,74 @@ export const GradeSchema = z.object({
 });
 export type Grade = z.infer<typeof GradeSchema>;
 
+// ---- Identifying materials and reading the syllabus ------------------------
+
+export const SOURCE_KINDS = [
+  "syllabus",
+  "lecture_notes",
+  "slides",
+  "textbook",
+  "assignment",
+  "past_exam",
+  "study_notes",
+  "other",
+] as const;
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+export const SOURCE_KIND_LABEL: Record<SourceKind, string> = {
+  syllabus: "Syllabus",
+  lecture_notes: "Lecture notes",
+  slides: "Slides",
+  textbook: "Textbook",
+  assignment: "Assignment",
+  past_exam: "Past exam",
+  study_notes: "Study notes",
+  other: "Other",
+};
+
+export const ClassificationSchema = z.object({
+  kind: z.enum(SOURCE_KINDS).describe(
+    "syllabus = course outline with schedule/grading/policies; lecture_notes = notes from lectures; slides = lecture slides; textbook = book chapter or reading; assignment = homework or problem set; past_exam = previous exam or practice test; study_notes = a student's own notes or summaries",
+  ),
+  title: z.string().describe("A short descriptive title for this document"),
+  summary: z.string().describe("One sentence on what this document contains"),
+});
+export type Classification = z.infer<typeof ClassificationSchema>;
+
+export const ASSESSMENT_TYPES = ["exam", "midterm", "final", "quiz", "assignment", "project", "presentation", "participation", "other"] as const;
+
+export const SyllabusSchema = z.object({
+  courseName: z.string(),
+  courseCode: z.string().describe("e.g. BIO 101; empty if not given"),
+  instructor: z.string().describe("Name(s) and contact if given; empty if not given"),
+  term: z.string().describe("e.g. Fall 2026; empty if not given"),
+  description: z.string().describe("One short paragraph on what the course is about"),
+  learningOutcomes: z.array(z.string()),
+  schedule: z
+    .array(
+      z.object({
+        label: z.string().describe('How the syllabus names this period, e.g. "Week 3" or "Lecture 5"'),
+        date: z.string().describe("Start date as YYYY-MM-DD if it can be determined, otherwise empty"),
+        topics: z.array(z.string()).describe("What is taught in this period"),
+        readings: z.array(z.string()),
+        topicIds: z.array(z.string()).describe("ids of study-guide topics this period covers (from the list provided)"),
+      }),
+    )
+    .describe("The course schedule in order"),
+  assessments: z.array(
+    z.object({
+      name: z.string(),
+      type: z.enum(ASSESSMENT_TYPES),
+      weightPercent: z.number().describe("Percentage of the final grade; -1 if not stated"),
+      date: z.string().describe("Due or exam date as YYYY-MM-DD if it can be determined, otherwise empty"),
+      details: z.string().describe("Format, length, what it covers; empty if not stated"),
+      topicIds: z.array(z.string()).describe("ids of study-guide topics it covers (from the list provided); empty if unclear"),
+    }),
+  ),
+  requiredMaterials: z.array(z.string()).describe("Textbooks and other required materials"),
+});
+export type Syllabus = z.infer<typeof SyllabusSchema>;
+
 // ---- Request bodies -------------------------------------------------------
 
 export const GuideRequestSchema = z.object({
@@ -96,4 +167,15 @@ export const TutorRequestSchema = z.object({
   messages: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1) }))
     .min(1),
+});
+
+export const ClassifyRequestSchema = z.object({
+  name: z.string().default(""),
+  text: z.string().min(1),
+});
+
+export const SyllabusRequestSchema = z.object({
+  text: z.string().min(1, "The syllabus is empty"),
+  topics: z.array(TopicRefSchema).default([]),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "today must be YYYY-MM-DD"),
 });

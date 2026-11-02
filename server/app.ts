@@ -5,6 +5,8 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod/v4";
 import {
+  ClassifyRequestSchema,
+  SyllabusRequestSchema,
   FlashcardRequestSchema,
   GradeRequestSchema,
   GuideRequestSchema,
@@ -12,8 +14,8 @@ import {
   TutorRequestSchema,
 } from "../shared/schemas";
 import { AIError, MODEL, PROVIDER, maxContentChars, streamTutor, toAIError } from "./ai";
-import { buildFlashcards, buildGuide, buildQuiz, gradeAnswer } from "./study";
-import { DEMO, demoFlashcards, demoGrade, demoGuide, demoQuiz, demoTutor } from "./demo";
+import { buildFlashcards, buildGuide, buildQuiz, classifySource, extractSyllabus, gradeAnswer } from "./study";
+import { DEMO, demoClassify, demoFlashcards, demoGrade, demoGuide, demoQuiz, demoSyllabus, demoTutor } from "./demo";
 import { UnsupportedFileError, extractFileText } from "./extract";
 
 // Material longer than the model can read in one go is rejected with a clear
@@ -35,11 +37,12 @@ function parseBody<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
     const issue = result.error.issues[0];
     throw new HttpError(400, `Invalid request: ${issue.path.join(".") || "body"} — ${issue.message}`);
   }
-  const data = result.data as { content?: string };
-  if (typeof data.content === "string" && data.content.length > MAX_CONTENT_CHARS) {
+  const data = result.data as { content?: string; text?: string };
+  const material = data.content ?? data.text;
+  if (typeof material === "string" && material.length > MAX_CONTENT_CHARS) {
     throw new HttpError(
       413,
-      `The course material is too long for the ${PROVIDER === "ollama" ? "local AI model" : "AI model"} (${data.content.length.toLocaleString()} characters; the limit is ${MAX_CONTENT_CHARS.toLocaleString()}). Split it into separate courses, e.g. one per unit or chapter.`,
+      `The course material is too long for the ${PROVIDER === "ollama" ? "local AI model" : "AI model"} (${material.length.toLocaleString()} characters; the limit is ${MAX_CONTENT_CHARS.toLocaleString()}). Split it into separate courses, e.g. one per unit or chapter.`,
     );
   }
   return result.data;
@@ -75,6 +78,22 @@ export function createApp() {
         }
       }
       res.json({ files: results });
+    }),
+  );
+
+  app.post(
+    "/api/classify",
+    asyncRoute(async (req, res) => {
+      const { name, text } = parseBody(ClassifyRequestSchema, req.body);
+      res.json({ classification: DEMO ? demoClassify(name, text) : await classifySource(name, text) });
+    }),
+  );
+
+  app.post(
+    "/api/syllabus",
+    asyncRoute(async (req, res) => {
+      const body = parseBody(SyllabusRequestSchema, req.body);
+      res.json({ syllabus: DEMO ? demoSyllabus(body) : await extractSyllabus(body) });
     }),
   );
 

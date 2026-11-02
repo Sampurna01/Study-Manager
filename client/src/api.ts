@@ -1,4 +1,5 @@
-import type { FlashcardDraft, Grade, Question, StudyGuide } from "../../shared/schemas";
+import type { Classification, FlashcardDraft, Grade, Question, StudyGuide, Syllabus } from "../../shared/schemas";
+import { toDateKey } from "../../shared/plan";
 import type { ChatMessage } from "./types";
 
 export class ApiError extends Error {}
@@ -40,6 +41,13 @@ export const api = {
     if (!res.ok) throw new ApiError(data?.error ?? "Upload failed");
     return data.files;
   },
+
+  // Only the opening of a document is needed to tell what kind it is.
+  classify: (name: string, text: string) =>
+    post<{ classification: Classification }>("/api/classify", { name, text: text.slice(0, 12_000) }).then((r) => r.classification),
+
+  syllabus: (text: string, topics: TopicRef[]) =>
+    post<{ syllabus: Syllabus }>("/api/syllabus", { text, topics, today: toDateKey(new Date()) }).then((r) => r.syllabus),
 
   guide: (title: string, content: string) => post<{ guide: StudyGuide }>("/api/guide", { title, content }).then((r) => r.guide),
 

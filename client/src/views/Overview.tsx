@@ -2,6 +2,7 @@ import type { Course } from "../types";
 import { isDue } from "../../../shared/srs";
 import { masteryLabel } from "../../../shared/mastery";
 import { buildPlan, toDateKey } from "../../../shared/plan";
+import { countdown, formatDate, upcomingAssessments } from "./Syllabus";
 
 export function MasteryBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
@@ -77,6 +78,14 @@ export function Overview({
   if (course.quizzes.length === 0) next.push({ text: "Take a practice quiz to find out where you stand.", href: `${base}/quiz`, cta: "Take a quiz" });
   else if (weakest[0] && (mastery[weakest[0].id] ?? 0) < 0.65)
     next.push({ text: `Your weakest topic is “${weakest[0].name}”. A weak-spots quiz targets it.`, href: `${base}/quiz?mode=weak_spots`, cta: "Drill weak spots" });
+  const nextDue = upcomingAssessments(course.syllabus)[0];
+  if (nextDue)
+    next.unshift({
+      text: `Next up: ${nextDue.name}${nextDue.weightPercent > 0 ? ` (${nextDue.weightPercent}% of your grade)` : ""} — ${formatDate(nextDue.date)}, ${countdown(nextDue.date)}.`,
+      href: `${base}/syllabus`,
+      cta: "See syllabus",
+    });
+  if (!course.syllabus) next.push({ text: "Add your syllabus so the app knows your schedule and exam dates.", href: `${base}/syllabus`, cta: "Add syllabus" });
   if (!course.plan) next.push({ text: "Have an exam date? Get a day-by-day plan.", href: `${base}/plan`, cta: "Make a plan" });
 
   return (

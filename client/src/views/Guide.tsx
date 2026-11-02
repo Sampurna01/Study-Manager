@@ -154,12 +154,25 @@ export function Guide({ course, mastery, set }: { course: Course; mastery: Recor
                     </span>
                   )}
                 </span>
-                <span className={`chip ${t.difficulty}`}>{DIFFICULTY_LABEL[t.difficulty]}</span>
+                <span className="topic-chips">
+                  {t.syllabusOnly && (
+                    <span className="chip gap" title="Your syllabus lists this topic, but your notes don't cover it yet">
+                      Not in your notes
+                    </span>
+                  )}
+                  <span className={`chip ${t.difficulty}`}>{DIFFICULTY_LABEL[t.difficulty]}</span>
+                </span>
                 <span className="muted small nowrap">~{t.estimatedMinutes} min</span>
                 <MasteryBar value={mastery[t.id] ?? 0} />
               </button>
               {open.has(t.id) && (
                 <div className="topic-body" data-topic={t.name}>
+                  {t.syllabusOnly && (
+                    <p className="banner warn small">
+                      Your syllabus lists this topic but your notes don't cover it, so this summary comes from general knowledge of the
+                      subject. Add your lecture notes for it to make questions match your course.
+                    </p>
+                  )}
                   <p>
                     <GlossaryText text={t.summary} matcher={matcher} id={`${t.id}-s`} active={activeTerm} onToggle={setActiveTerm} />
                   </p>
