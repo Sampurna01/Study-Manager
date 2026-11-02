@@ -19,7 +19,7 @@ Requirements: Node.js 20+ and an [Anthropic API key](https://console.anthropic.c
 
 ```bash
 npm install
-export ANTHROPIC_API_KEY=sk-ant-...
+cp .env.example .env # then open .env and paste your key after ANTHROPIC_API_KEY=
 npm run dev          # API on :8787, web app on http://localhost:5173
 ```
 
@@ -42,7 +42,7 @@ npm start            # serves the API and the built app on :8787
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | Claude credentials (`ANTHROPIC_AUTH_TOKEN` or an `ant auth login` profile also work) |
+| `ANTHROPIC_API_KEY` | — | Claude credentials, read from the environment or a `.env` file (`ANTHROPIC_AUTH_TOKEN` or an `ant auth login` profile also work) |
 | `STUDY_MANAGER_MODEL` | `claude-opus-5-5` | Model used for all generation |
 | `STUDY_MANAGER_DEMO` | unset | Set to `1` for offline demo mode |
 | `PORT` | `8787` | API server port |
