@@ -81,8 +81,8 @@ export function NewCourse({ onCreated }: { onCreated: (c: Course) => void }) {
         <div className="spinner" aria-hidden />
         <h2>Reading your course material…</h2>
         <p className="muted">
-          Claude is breaking it into topics, pulling out the key points, and writing your study guide. Large courses can take
-          a minute or two.
+          The AI is breaking it into topics, pulling out the key points, and writing your study guide. On your own computer this
+          can take a few minutes, especially the first time. Keep this tab open.
         </p>
       </div>
     );

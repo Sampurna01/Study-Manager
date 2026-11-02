@@ -41,7 +41,7 @@ export function navigate(courseId: string | null, tab: Tab = "overview") {
 export function App() {
   const { courses, error, save, update, remove } = useCourses();
   const [route, setRoute] = useState<Route>(parseHash);
-  const [demo, setDemo] = useState(false);
+  const [ai, setAi] = useState<{ provider: string; model: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export function App() {
       setMenuOpen(false);
     };
     window.addEventListener("hashchange", onHash);
-    api.health().then((h) => setDemo(h.demo)).catch(() => undefined);
+    api.health().then((h) => setAi({ provider: h.provider, model: h.model })).catch(() => undefined);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
@@ -77,9 +77,15 @@ export function App() {
             </a>
           ))}
         </nav>
-        {demo && (
+        {ai?.provider === "demo" && (
           <div className="demo-note small">
-            <strong>Demo mode.</strong> The server is using a simple offline generator instead of Claude.
+            <strong>Demo mode.</strong> The server is using a simple offline generator, not real AI. Start it with{" "}
+            <code>npm run dev</code> for the real thing.
+          </div>
+        )}
+        {ai?.provider === "ollama" && (
+          <div className="ai-note small muted">
+            AI runs on this computer with <strong>{ai.model}</strong> (free, private).
           </div>
         )}
       </aside>

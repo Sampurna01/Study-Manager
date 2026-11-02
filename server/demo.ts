@@ -1,5 +1,5 @@
 /**
- * Demo mode (STUDY_MANAGER_DEMO=1): a deterministic, offline stand-in for Claude so
+ * Demo mode (STUDY_MANAGER_DEMO=1): a deterministic, offline stand-in for the AI so
  * the app can be tried and tested without API credentials. It derives topics from
  * headings and key sentences from the text — useful for exploring the UI, not for
  * real studying.

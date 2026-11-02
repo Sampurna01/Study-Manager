@@ -355,3 +355,4 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 .row.wrap { align-items: flex-end; }
 @media (max-width: 640px) { .plan-day { grid-template-columns: 1fr; gap: 0.4rem; } .plan-date { flex-direction: row; gap: 0.6rem; } }
 .tutor > .btn { align-self: flex-start; }
+.ai-note { margin-top: auto; padding: 0.7rem; }

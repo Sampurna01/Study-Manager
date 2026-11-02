@@ -2,10 +2,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 
-// Stand in for Claude: return canned structured output based on the schema requested.
+// Stand in for the AI: return canned structured output based on the schema requested.
 const generateStructured = vi.fn();
-vi.mock("../server/claude", async (orig) => {
-  const actual = await orig<typeof import("../server/claude")>();
+vi.mock("../server/ai", async (orig) => {
+  const actual = await orig<typeof import("../server/ai")>();
   return {
     ...actual,
     generateStructured: (...args: unknown[]) => generateStructured(...args),
@@ -90,16 +90,16 @@ describe("API", () => {
     expect(quiz.body.questions[1]).toMatchObject({ type: "short_answer", options: [], correctOption: -1 });
   });
 
-  it("gives empty answers zero without calling Claude", async () => {
+  it("gives empty answers zero without calling the AI", async () => {
     generateStructured.mockClear();
     const res = await request(app).post("/api/grade").send({ content: "x", prompt: "p", modelAnswer: "m", studentAnswer: "  " });
     expect(res.body.grade.score).toBe(0);
     expect(generateStructured).not.toHaveBeenCalled();
   });
 
-  it("surfaces Claude errors with a useful status", async () => {
-    const { ClaudeError } = await import("../server/claude");
-    generateStructured.mockRejectedValueOnce(new ClaudeError("rate limited", 429));
+  it("surfaces AI errors with a useful status", async () => {
+    const { AIError } = await import("../server/errors");
+    generateStructured.mockRejectedValueOnce(new AIError("rate limited", 429));
     const res = await request(app).post("/api/quiz").send({ content: "x", topics });
     expect(res.status).toBe(429);
     expect(res.body.error).toBe("rate limited");

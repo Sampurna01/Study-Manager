@@ -22,7 +22,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 type TopicRef = { id: string; name: string; mastery?: number };
 
 export const api = {
-  async health(): Promise<{ ok: boolean; demo: boolean; model: string }> {
+  async health(): Promise<{ ok: boolean; demo: boolean; provider: "ollama" | "anthropic" | "demo"; model: string }> {
     const res = await fetch("/api/health");
     return res.json();
   },

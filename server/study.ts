@@ -12,7 +12,7 @@ import {
   type Question,
   type Grade,
 } from "../shared/schemas";
-import { generateStructured } from "./claude";
+import { generateStructured } from "./ai";
 
 type FlashcardRequest = z.infer<typeof FlashcardRequestSchema>;
 type QuizRequest = z.infer<typeof QuizRequestSchema>;

@@ -11,15 +11,14 @@ import {
   QuizRequestSchema,
   TutorRequestSchema,
 } from "../shared/schemas";
-import { ClaudeError, MODEL, streamTutor, toClaudeError } from "./claude";
+import { AIError, MODEL, PROVIDER, maxContentChars, streamTutor, toAIError } from "./ai";
 import { buildFlashcards, buildGuide, buildQuiz, gradeAnswer } from "./study";
 import { DEMO, demoFlashcards, demoGrade, demoGuide, demoQuiz, demoTutor } from "./demo";
 import { UnsupportedFileError, extractFileText } from "./extract";
 
-// ~3.2M characters is roughly 800K tokens: comfortably inside the model's context
-// window with room for instructions and output. Larger material is rejected
-// rather than silently truncated.
-export const MAX_CONTENT_CHARS = 3_200_000;
+// Material longer than the model can read in one go is rejected with a clear
+// message rather than silently truncated.
+export const MAX_CONTENT_CHARS = maxContentChars();
 
 class HttpError extends Error {
   constructor(
@@ -40,7 +39,7 @@ function parseBody<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
   if (typeof data.content === "string" && data.content.length > MAX_CONTENT_CHARS) {
     throw new HttpError(
       413,
-      `The course material is too long (${data.content.length.toLocaleString()} characters; the limit is ${MAX_CONTENT_CHARS.toLocaleString()}). Split it into separate courses, e.g. one per unit.`,
+      `The course material is too long for the ${PROVIDER === "ollama" ? "local AI model" : "AI model"} (${data.content.length.toLocaleString()} characters; the limit is ${MAX_CONTENT_CHARS.toLocaleString()}). Split it into separate courses, e.g. one per unit or chapter.`,
     );
   }
   return result.data;
@@ -56,7 +55,7 @@ export function createApp() {
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024, files: 20 } });
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, demo: DEMO, model: DEMO ? "demo" : MODEL });
+    res.json({ ok: true, demo: DEMO, provider: DEMO ? "demo" : PROVIDER, model: DEMO ? "demo" : MODEL });
   });
 
   app.post(
@@ -129,7 +128,7 @@ export function createApp() {
         else await streamTutor(content, messages, write, controller.signal);
       } catch (err) {
         if (controller.signal.aborted) return;
-        const e = toClaudeError(err);
+        const e = toAIError(err);
         if (!res.headersSent) throw e;
         res.write(`\n\n⚠️ ${e.message}`);
       }
@@ -163,7 +162,7 @@ export function createApp() {
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     let status = 500;
     let message = "Something went wrong.";
-    if (err instanceof HttpError || err instanceof ClaudeError) {
+    if (err instanceof HttpError || err instanceof AIError) {
       status = err.status;
       message = err.message;
     } else if (err instanceof multer.MulterError) {
