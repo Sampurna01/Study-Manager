@@ -147,6 +147,17 @@ export function createApp() {
   if (fs.existsSync(path.join(dist, "index.html"))) {
     app.use(express.static(dist));
     app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(dist, "index.html")));
+  } else {
+    // Dev mode: the web app is served by Vite, not this server. Point people there.
+    app.get("/", (_req, res) => {
+      res.type("html").send(
+        `<!doctype html><meta charset="utf-8"><title>Study Manager</title>
+<body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 16px;line-height:1.5">
+<h1>This is the Study Manager API server</h1>
+<p>The app itself runs at <a href="http://localhost:5173">http://localhost:5173</a> while you use <code>npm run dev</code>.</p>
+<p>To serve everything from this port instead, run <code>npm run build</code> and then <code>npm start</code>.</p></body>`,
+      );
+    });
   }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

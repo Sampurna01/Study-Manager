@@ -47,6 +47,14 @@ npm start            # serves the API and the built app on :8787
 | `STUDY_MANAGER_DEMO` | unset | Set to `1` for offline demo mode |
 | `PORT` | `8787` | API server port |
 
+### Troubleshooting
+
+- **Nothing loads in the browser.** In development, open **http://localhost:5173**, not `:8787`. Keep the terminal running; closing it or pressing Ctrl+C stops the app. Wait for the line `Local: http://localhost:5173/` before opening the page.
+- **`npm` or `node` is "not recognized".** Install Node.js 20+ from nodejs.org, then open a new terminal.
+- **"Cannot find module" or "concurrently: not found".** Run `npm install` in the project folder first.
+- **"Port 5173 / 8787 is already in use".** Another copy is still running. Close the other terminal, or run with a different API port: `PORT=8790 npm run dev`.
+- **The app opens but buttons show an Anthropic credentials error.** Set `ANTHROPIC_API_KEY` in the same terminal before `npm run dev`, or use `npm run dev:demo`.
+
 ## How it works
 
 ```
