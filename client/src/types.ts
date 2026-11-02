@@ -45,4 +45,6 @@ export interface Course {
   quizzes: QuizRecord[];
   chat: ChatMessage[];
   plan?: PlanSettings;
+  /** Key points the student has ticked off in the study guide, as "topicId|index". */
+  checked?: string[];
 }

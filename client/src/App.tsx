@@ -176,7 +176,7 @@ function CourseView({
             }}
           />
         )}
-        {tab === "guide" && <Guide course={course} mastery={mastery} />}
+        {tab === "guide" && <Guide course={course} mastery={mastery} set={set} />}
         {tab === "flashcards" && <Flashcards course={course} mastery={mastery} set={set} />}
         {tab === "quiz" && <Quiz course={course} mastery={mastery} set={set} />}
         {tab === "tutor" && <Tutor course={course} mastery={mastery} set={set} />}

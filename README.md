@@ -4,7 +4,7 @@ Give it your course material and it gets you ready for the exam.
 
 Upload lecture notes, slides exported to PDF, textbook chapters or a syllabus (or paste text), and Study Manager uses AI to build:
 
-- **A study guide.** The material is split into ordered topics, each with a summary, key points, difficulty, prerequisites and a time estimate. You also get learning objectives and a searchable glossary.
+- **An interactive study guide.** The material is split into ordered topics, each with a summary, key points, difficulty, prerequisites and a time estimate. Select any passage to get it explained, click underlined terms to see their definitions, tick off key points as you learn them, and take a quick three-question check inside each topic. You also get learning objectives and a searchable glossary.
 - **Flashcards with spaced repetition.** Cards are generated per topic and scheduled with an SM‑2 style algorithm (Again / Hard / Good / Easy), so cards you find hard come back sooner.
 - **Adaptive quizzes.** Three modes: *Practice*, *Weak spots* (targets your lowest‑mastery topics and common misconceptions) and *Mock exam*. Multiple‑choice answers are checked straight away. Short answers are graded by the AI, with feedback and the points you missed.
 - **A personal tutor.** A streaming chat grounded in your material. It explains, checks your understanding, gives hints before full solutions, and quizzes you one question at a time.

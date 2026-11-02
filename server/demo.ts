@@ -178,8 +178,8 @@ export async function demoTutor(
     .slice(0, 3)
     .filter((x) => x.hits > 0);
   const reply = best.length
-    ? `**Demo mode** — here's what your material says that relates to your question:\n\n${best.map((b) => `- ${b.s}`).join("\n")}\n\nRun the server with an Anthropic API key for real tutoring.`
-    : "**Demo mode** — I couldn't find anything in the material matching that. Run the server with an Anthropic API key for real tutoring.";
+    ? `**Demo mode** — here's what your material says that relates to your question:\n\n${best.map((b) => `- ${b.s}`).join("\n")}\n\nStart the app with \`npm run dev\` (not \`dev:demo\`) for real AI tutoring.`
+    : "**Demo mode** — I couldn't find anything in the material matching that. Start the app with \`npm run dev\` (not \`dev:demo\`) for real AI tutoring.";
   for (const chunk of reply.match(/.{1,24}/gs) ?? []) {
     onText(chunk);
     await new Promise((r) => setTimeout(r, 15));
