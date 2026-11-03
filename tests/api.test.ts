@@ -108,6 +108,27 @@ describe("API", () => {
     expect(schema.safeParse({ questions: [{ ...q, prompt: "p", topicId: "DNA" }] }).success).toBe(false);
   });
 
+  it("retries once when the AI returns no usable questions, then explains the failure", async () => {
+    const q = { type: "multiple_choice", options: ["a", "b", "c", "d"], correctOption: 0, modelAnswer: "m", explanation: "e", difficulty: "recall", prompt: "p" };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    generateStructured.mockResolvedValueOnce({ questions: [] });
+    generateStructured.mockResolvedValueOnce({ questions: [{ ...q, topicId: "cells" }] });
+    const ok = await request(app).post("/api/quiz").send({ content: "x", topics, count: 3 });
+    expect(ok.body.questions).toHaveLength(1);
+
+    generateStructured.mockResolvedValueOnce({ questions: [] });
+    generateStructured.mockResolvedValueOnce({ questions: [{ ...q, topicId: "unknown-topic" }] });
+    const bad = await request(app).post("/api/quiz").send({ content: "x", topics, count: 3 });
+    expect(bad.status).toBe(502);
+    expect(bad.body.error).toMatch(/usable questions/);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+
+    // The schema sent to the model doesn't allow an empty list.
+    const { schema } = generateStructured.mock.calls.at(-1)![0];
+    expect(schema.safeParse({ questions: [] }).success).toBe(false);
+  });
+
   it("gives empty answers zero without calling the AI", async () => {
     generateStructured.mockClear();
     const res = await request(app).post("/api/grade").send({ content: "x", prompt: "p", modelAnswer: "m", studentAnswer: "  " });

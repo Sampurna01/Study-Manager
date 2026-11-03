@@ -18,7 +18,7 @@ import {
   type Question,
   type Grade,
 } from "../shared/schemas";
-import { generateStructured } from "./ai";
+import { AIError, generateStructured } from "./ai";
 
 type FlashcardRequest = z.infer<typeof FlashcardRequestSchema>;
 type QuizRequest = z.infer<typeof QuizRequestSchema>;
@@ -100,11 +100,38 @@ function topicIdEnum(topics: { id: string }[]) {
   return ids.length ? zod.enum(ids as [string, ...string[]]) : zod.string();
 }
 
+/**
+ * Generate a list, clean it, and try once more if nothing usable came back.
+ * Logs what the model returned so empty results can be diagnosed from the terminal.
+ */
+async function generateList<T>(label: string, generate: () => Promise<unknown[]>, clean: (raw: unknown[]) => T[]): Promise<T[]> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const raw = await generate();
+    const items = clean(raw);
+    if (items.length) return items;
+    console.warn(
+      `[${label}] attempt ${attempt}: the AI returned ${raw.length} item(s), none usable. Start of its answer: ${JSON.stringify(raw).slice(0, 400)}`,
+    );
+  }
+  throw new AIError(
+    `The AI didn't produce any usable ${label}. Try again, pick fewer topics, or switch to a larger model (see the README).`,
+    502,
+  );
+}
+
 export async function buildFlashcards(req: FlashcardRequest): Promise<FlashcardDraft[]> {
   const resolve = topicResolver(req.topics);
+  return generateList("flashcards", () => draftFlashcards(req), (raw) =>
+    (raw as FlashcardDraft[])
+      .map((c) => ({ ...c, topicId: resolve(c.topicId) ?? "" }))
+      .filter((c) => c.topicId && c.front?.trim() && c.back?.trim()),
+  );
+}
+
+async function draftFlashcards(req: FlashcardRequest): Promise<unknown[]> {
   const { cards } = await generateStructured({
     content: req.content,
-    schema: zod.object({ cards: zod.array(FlashcardDraftSchema.extend({ topicId: topicIdEnum(req.topics) })) }),
+    schema: zod.object({ cards: zod.array(FlashcardDraftSchema.extend({ topicId: topicIdEnum(req.topics) })).min(1) }),
     effort: "medium",
     task: `Write ${req.count} flashcards covering these topics (spread them in proportion to how much material each topic has):
 ${topicList(req.topics)}
@@ -115,9 +142,7 @@ Rules:
 - topicId must be one of the ids above.
 ${req.existingFronts.length ? `- The student already has these cards; don't duplicate them:\n${req.existingFronts.map((f) => `  * ${f}`).join("\n")}` : ""}`,
   });
-  return cards
-    .map((c) => ({ ...c, topicId: resolve(c.topicId) ?? "" }))
-    .filter((c) => c.topicId && c.front.trim() && c.back.trim());
+  return cards;
 }
 
 const MODE_GUIDANCE: Record<QuizRequest["mode"], string> = {
@@ -129,9 +154,23 @@ const MODE_GUIDANCE: Record<QuizRequest["mode"], string> = {
 
 export async function buildQuiz(req: QuizRequest): Promise<Question[]> {
   const resolve = topicResolver(req.topics);
+  return generateList("questions", () => draftQuiz(req), (raw) =>
+    (raw as Question[])
+      .map((q) => ({ ...q, topicId: resolve(q.topicId) ?? "" }))
+      .filter((q) => q.topicId && q.prompt?.trim())
+      .map((q) => {
+        if (q.type === "multiple_choice" && (q.options.length < 2 || q.correctOption < 0 || q.correctOption >= q.options.length)) {
+          return { ...q, type: "short_answer" as const, options: [], correctOption: -1 };
+        }
+        return q.type === "short_answer" ? { ...q, options: [], correctOption: -1 } : q;
+      }),
+  );
+}
+
+async function draftQuiz(req: QuizRequest): Promise<unknown[]> {
   const { questions } = await generateStructured({
     content: req.content,
-    schema: zod.object({ questions: zod.array(QuestionSchema.extend({ topicId: topicIdEnum(req.topics) })) }),
+    schema: zod.object({ questions: zod.array(QuestionSchema.extend({ topicId: topicIdEnum(req.topics) })).min(1) }),
     effort: "medium",
     task: `Write a ${req.count}-question quiz on these topics:
 ${topicList(req.topics)}
@@ -141,17 +180,10 @@ ${MODE_GUIDANCE[req.mode]}
 - About two thirds multiple_choice (exactly 4 options, one clearly correct, plausible distractors based on real misconceptions; vary the position of the correct option) and one third short_answer (answerable in 1-4 sentences).
 - For short_answer set options to [] and correctOption to -1.
 - explanation teaches: say why the right answer is right and, for multiple choice, why the tempting wrong answer is wrong.
-- topicId must be one of the ids above.`,
+- topicId must be one of the ids above.
+- Write all ${req.count} questions; the "questions" list must not be empty.`,
   });
-  return questions
-    .map((q) => ({ ...q, topicId: resolve(q.topicId) ?? "" }))
-    .filter((q) => q.topicId && q.prompt.trim())
-    .map((q) => {
-      if (q.type === "multiple_choice" && (q.options.length < 2 || q.correctOption < 0 || q.correctOption >= q.options.length)) {
-        return { ...q, type: "short_answer" as const, options: [], correctOption: -1 };
-      }
-      return q.type === "short_answer" ? { ...q, options: [], correctOption: -1 } : q;
-    });
+  return questions;
 }
 
 export async function gradeAnswer(req: GradeRequest): Promise<Grade> {
