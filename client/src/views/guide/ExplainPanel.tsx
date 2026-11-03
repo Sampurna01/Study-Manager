@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatMessage, Course } from "../../types";
 import { api } from "../../api";
 import { Markdown } from "../../Markdown";
+import { DiagramButton } from "../../DiagramButton";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 
@@ -86,6 +87,9 @@ export function ExplainPanel({
         ) : null}
         {error && <div className="banner error">{error}</div>}
       </div>
+      {done && reply && (
+        <DiagramButton content={course.content} about={`Passage: ${request.text}\nExplanation: ${reply}`} />
+      )}
       {done && reply && (
         <div className="row">
           <button className="btn primary small" onClick={continueInTutor}>

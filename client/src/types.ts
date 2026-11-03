@@ -1,6 +1,7 @@
 import type { StudyGuide, Question, Grade, Syllabus, SourceKind, QuizStyle } from "../../shared/schemas";
 import type { CardSchedule } from "../../shared/srs";
 import type { QuizAttempt } from "../../shared/mastery";
+import type { Diagram } from "../../shared/diagram";
 
 export type { StudyGuide, Question, Grade, CardSchedule, QuizAttempt, Syllabus, SourceKind };
 
@@ -23,6 +24,8 @@ export interface QuizRecord {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /** A diagram drawn for this message, if the student asked for one. */
+  diagram?: Diagram;
 }
 
 export interface PlanSettings {

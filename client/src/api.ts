@@ -1,6 +1,7 @@
 import type { Classification, FlashcardDraft, Grade, Question, QuizStyle, StudyGuide, Syllabus } from "../../shared/schemas";
 import { toDateKey } from "../../shared/plan";
 import type { ChatMessage } from "./types";
+import type { Diagram } from "../../shared/diagram";
 
 export class ApiError extends Error {}
 
@@ -48,6 +49,8 @@ export const api = {
 
   syllabus: (text: string, topics: TopicRef[]) =>
     post<{ syllabus: Syllabus }>("/api/syllabus", { text, topics, today: toDateKey(new Date()) }).then((r) => r.syllabus),
+
+  diagram: (content: string, about: string) => post<{ diagram: Diagram }>("/api/diagram", { content, about }).then((r) => r.diagram),
 
   guide: (title: string, content: string) => post<{ guide: StudyGuide }>("/api/guide", { title, content }).then((r) => r.guide),
 

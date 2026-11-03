@@ -208,6 +208,18 @@ describe("API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("draws diagrams, dropping anything that can't be drawn", async () => {
+    generateStructured.mockResolvedValueOnce({
+      kind: "plot", title: "t", caption: "c", xMin: -3, xMax: 3, yMin: -2, yMax: 10, xLabel: "x", yLabel: "y", equalAxes: false,
+      functions: [{ expr: "x^2", label: "x²" }, { expr: "x +", label: "broken" }],
+      points: [], vectors: [], circles: [], nodes: [], edges: [],
+    });
+    const res = await request(app).post("/api/diagram").send({ content: "x", about: "graph of x squared" });
+    expect(res.status).toBe(200);
+    expect(res.body.diagram.functions).toEqual([{ expr: "x^2", label: "x²" }]);
+    expect(generateStructured.mock.calls.at(-1)![0].task).toContain("graph of x squared");
+  });
+
   it("streams tutor replies", async () => {
     const res = await request(app)
       .post("/api/tutor")

@@ -19,6 +19,7 @@ import {
   type Grade,
 } from "../shared/schemas";
 import { AIError, generateStructured } from "./ai";
+import { DiagramSchema, cleanDiagram, type Diagram } from "../shared/diagram";
 
 type FlashcardRequest = z.infer<typeof FlashcardRequestSchema>;
 type QuizRequest = z.infer<typeof QuizRequestSchema>;
@@ -315,4 +316,31 @@ How to grade:
 score: 0-1. verdict: correct (>= 0.8), partially_correct (0.4-0.8), incorrect (< 0.4).`,
   });
   return { ...grade, score: Math.max(0, Math.min(1, grade.score)) };
+}
+
+export async function drawDiagram(content: string, about: string): Promise<Diagram> {
+  const diagram = await generateStructured({
+    content,
+    schema: DiagramSchema,
+    effort: "medium",
+    maxTokens: 8000,
+    task: `Design ONE diagram that helps a student understand the following. The app will draw it from your description.
+
+<about>
+${about}
+</about>
+
+Choose kind:
+- plot: anything on axes — graphs of functions (and their approximations, tangents, areas), specific points (roots, maxima, poles, eigenvalues), vectors (eigenvectors, forces, transformations), circles (contours, |z| = r regions). Use xLabel "Re" and yLabel "Im" for the complex plane, with equalAxes true.
+- flow: boxes and arrows — a method's steps, a process or cycle, a decision procedure, how concepts relate. 3-10 short node labels; edges reference node ids.
+- none: only if no diagram would genuinely help.
+
+Rules for plot:
+- functions[].expr is y in terms of x only, using + - * / ^ ( ), sin cos tan exp ln log sqrt abs, pi, e. Write 2*x rather than 2x. No other variables, no "y =".
+- Pick xMin/xMax/yMin/yMax so the interesting features (intercepts, turning points, where approximations differ, the vectors and circles) are all visible.
+- Labels are short plain text (e.g. "f(x) = x^2", "λ = 3", "z0"). Use the exact numbers from the question or solution.
+Leave every field that doesn't apply empty ([] or ""), and use 0 for unused numbers in a flow diagram.
+caption: one sentence on what to notice.`,
+  });
+  return cleanDiagram(diagram);
 }

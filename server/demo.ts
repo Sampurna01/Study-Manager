@@ -18,6 +18,7 @@ import type {
   StudyGuide,
 } from "../shared/schemas";
 import { normalizeGuide, normalizeSyllabus } from "./study";
+import { EMPTY_DIAGRAM, cleanDiagram, type Diagram } from "../shared/diagram";
 
 export const DEMO = process.env.STUDY_MANAGER_DEMO === "1";
 
@@ -308,4 +309,63 @@ export function demoSyllabus(req: z.infer<typeof SyllabusRequestSchema>): Syllab
     },
     topicIds,
   );
+}
+
+// ---- Diagrams (keyword heuristics) ----------------------------------------
+
+
+export function demoDiagram(about: string): Diagram {
+  const text = about.toLowerCase();
+  if (/sin|cos|taylor|series|graph|function|x\^2|parabola|exp/.test(text)) {
+    return cleanDiagram({
+      ...EMPTY_DIAGRAM,
+      kind: "plot",
+      title: "sin(x) and its Taylor approximations",
+      caption: "Demo mode: near x = 0 the polynomials hug sin(x); further out they drift away.",
+      xMin: -6,
+      xMax: 6,
+      yMin: -2,
+      yMax: 2,
+      functions: [
+        { expr: "sin(x)", label: "sin(x)" },
+        { expr: "x - x^3/6", label: "x − x³/6" },
+        { expr: "x - x^3/6 + x^5/120", label: "+ x⁵/120" },
+      ],
+      points: [{ x: 0, y: 0, label: "expansion point" }],
+    });
+  }
+  if (/eigen|vector|matri|complex|contour|plane/.test(text)) {
+    return cleanDiagram({
+      ...EMPTY_DIAGRAM,
+      kind: "plot",
+      title: "Eigenvectors of B = [[2, 1], [1, 2]]",
+      caption: "Demo mode: B stretches v₁ by 3 and leaves v₂'s length unchanged (λ = 1).",
+      xMin: -4,
+      xMax: 4,
+      yMin: -4,
+      yMax: 4,
+      equalAxes: true,
+      vectors: [
+        { fromX: 0, fromY: 0, toX: 1, toY: 1, label: "v₁ = (1, 1)" },
+        { fromX: 0, fromY: 0, toX: 3, toY: 3, label: "Bv₁ = 3v₁" },
+        { fromX: 0, fromY: 0, toX: -1, toY: 1, label: "v₂ = (−1, 1)" },
+      ],
+      circles: [{ cx: 0, cy: 0, r: 1, label: "unit circle" }],
+    });
+  }
+  const steps = about
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.replace(/^\s*(\d+[.)]|[-*])\s*/, "").trim())
+    .filter((s) => s.length > 3)
+    .slice(0, 6);
+  if (steps.length < 2) return { ...EMPTY_DIAGRAM };
+  const nodes = steps.map((s, i) => ({ id: `s${i}`, label: s.length > 60 ? s.slice(0, 57) + "…" : s }));
+  return cleanDiagram({
+    ...EMPTY_DIAGRAM,
+    kind: "flow",
+    title: "Step by step",
+    caption: "Demo mode: each box is one sentence, in order.",
+    nodes,
+    edges: nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id, label: "" })),
+  });
 }

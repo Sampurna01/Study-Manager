@@ -4,6 +4,7 @@ import { api } from "../api";
 import { uid } from "../store";
 import { TopicPicker } from "./TopicPicker";
 import { MathText } from "../MathText";
+import { DiagramButton } from "../DiagramButton";
 import { ProblemInput, WorkedSolution, HINT_PENALTY } from "./quiz/Problem";
 import { QUIZ_STYLES, defaultQuizStyle } from "../quizStyle";
 import type { QuizStyle } from "../../../shared/schemas";
@@ -262,6 +263,12 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
         <h2 className="prompt">
           <MathText text={q.prompt} />
         </h2>
+        <DiagramButton
+          key={`diagram-${index}`}
+          content={course.content}
+          label="📈 Draw a diagram for this question"
+          about={`Question (don't reveal the answer in the diagram): ${q.prompt}${q.options.length ? `\nOptions: ${q.options.join(" | ")}` : ""}`}
+        />
 
         {q.type === "multiple_choice" ? (
           <div className="options">
@@ -339,7 +346,7 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
                 <em>Model answer:</em> <MathText text={q.modelAnswer} />
               </p>
             )}
-            {q.type === "problem" && <WorkedSolution question={q} />}
+            {q.type === "problem" && <WorkedSolution question={q} content={course.content} />}
             <p className="muted">
               <MathText text={q.explanation} />
             </p>

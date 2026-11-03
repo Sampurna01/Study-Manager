@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatMessage, Course } from "../types";
 import { api } from "../api";
 import { Markdown } from "../Markdown";
+import { DiagramButton } from "../DiagramButton";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 
@@ -38,7 +39,7 @@ export function Tutor({ course, mastery, set }: { course: Course; mastery: Recor
     abortRef.current = controller;
     let reply = "";
     try {
-      let sent = history.slice(-MAX_HISTORY);
+      let sent = history.slice(-MAX_HISTORY).map(({ role, content }) => ({ role, content }));
       if (sent[0]?.role !== "user") sent = sent.slice(1);
       await api.tutor(course.content, sent, (t) => {
         reply += t;
@@ -82,6 +83,17 @@ export function Tutor({ course, mastery, set }: { course: Course; mastery: Recor
         {course.chat.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             {m.role === "assistant" ? <Markdown text={m.content} /> : <p>{m.content}</p>}
+            {m.role === "assistant" && (
+              <DiagramButton
+                content={course.content}
+                label="📈 Draw this"
+                saved={m.diagram}
+                about={`${course.chat[i - 1]?.role === "user" ? `Student asked: ${course.chat[i - 1].content}\n` : ""}Tutor explained: ${m.content}`}
+                onDrawn={(diagram) =>
+                  set((c) => ({ ...c, chat: c.chat.map((msg, j) => (j === i ? { ...msg, diagram } : msg)) }))
+                }
+              />
+            )}
           </div>
         ))}
         {streaming !== null && (

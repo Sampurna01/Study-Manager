@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Grade, Question } from "../../types";
 import { api } from "../../api";
 import { MathText } from "../../MathText";
+import { DiagramButton } from "../../DiagramButton";
 
 export interface ProblemAnswer {
   text: string;
@@ -109,8 +110,8 @@ export function ProblemInput({
   );
 }
 
-/** The worked solution, step by step. */
-export function WorkedSolution({ question }: { question: Question }) {
+/** The worked solution, step by step, with an optional diagram of it. */
+export function WorkedSolution({ question, content }: { question: Question; content?: string }) {
   const steps = question.solutionSteps ?? [];
   return (
     <div className="worked">
@@ -127,6 +128,13 @@ export function WorkedSolution({ question }: { question: Question }) {
       <p className="final-answer">
         <em>Answer:</em> <MathText text={question.modelAnswer} />
       </p>
+      {content && (
+        <DiagramButton
+          content={content}
+          label="📈 Draw the solution"
+          about={`Problem: ${question.prompt}\nWorked solution:\n${steps.map((st, i) => `${i + 1}. ${st}`).join("\n")}\nAnswer: ${question.modelAnswer}`}
+        />
+      )}
     </div>
   );
 }

@@ -14,8 +14,9 @@ import {
   TutorRequestSchema,
 } from "../shared/schemas";
 import { AIError, MODEL, PROVIDER, maxContentChars, streamTutor, toAIError } from "./ai";
-import { buildFlashcards, buildGuide, buildQuiz, classifySource, extractSyllabus, gradeAnswer } from "./study";
-import { DEMO, demoClassify, demoFlashcards, demoGrade, demoGuide, demoQuiz, demoSyllabus, demoTutor } from "./demo";
+import { buildFlashcards, buildGuide, buildQuiz, classifySource, drawDiagram, extractSyllabus, gradeAnswer } from "./study";
+import { DiagramRequestSchema } from "../shared/diagram";
+import { DEMO, demoDiagram, demoClassify, demoFlashcards, demoGrade, demoGuide, demoQuiz, demoSyllabus, demoTutor } from "./demo";
 import { UnsupportedFileError, extractFileText } from "./extract";
 
 // Material longer than the model can read in one go is rejected with a clear
@@ -94,6 +95,14 @@ export function createApp() {
     asyncRoute(async (req, res) => {
       const body = parseBody(SyllabusRequestSchema, req.body);
       res.json({ syllabus: DEMO ? demoSyllabus(body) : await extractSyllabus(body) });
+    }),
+  );
+
+  app.post(
+    "/api/diagram",
+    asyncRoute(async (req, res) => {
+      const { content, about } = parseBody(DiagramRequestSchema, req.body);
+      res.json({ diagram: DEMO ? demoDiagram(about) : await drawDiagram(content, about) });
     }),
   );
 

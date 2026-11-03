@@ -132,7 +132,7 @@ export function InlineQuiz({ course, topic, mastery, set }: { course: Course; to
                     <em>Model answer:</em> <MathText text={q.modelAnswer} />
                   </p>
                 )}
-                {q.type === "problem" && <WorkedSolution question={q} />}
+                {q.type === "problem" && <WorkedSolution question={q} content={course.content} />}
                 <p className="muted">
                   <MathText text={q.explanation} />
                 </p>

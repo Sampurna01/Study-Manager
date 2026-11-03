@@ -15,6 +15,12 @@
   --bad: #dc2626;
   --bad-soft: #fdecec;
   --high: #0d9488;
+  --s0: #4f46e5;
+  --s1: #e11d48;
+  --s2: #059669;
+  --s3: #d97706;
+  --s4: #0284c7;
+  --s5: #9333ea;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(20, 24, 40, 0.05), 0 2px 8px rgba(20, 24, 40, 0.04);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -41,6 +47,12 @@
     --bad: #f87171;
     --bad-soft: #321819;
     --high: #2dd4bf;
+    --s0: #8b85ff;
+    --s1: #fb7185;
+    --s2: #34d399;
+    --s3: #fbbf24;
+    --s4: #38bdf8;
+    --s5: #c084fc;
     --shadow: none;
   }
 }
@@ -466,3 +478,36 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 .math-inline .katex { font-size: 1.05em; }
 .option > span:last-child { min-width: 0; overflow-x: auto; }
 .question .prompt .katex-display, .question .prompt .math-display { font-weight: normal; }
+
+/* ---------- Diagrams ---------- */
+.diagram-wrap { margin: 0.5rem 0; }
+.diagram { margin: 0.4rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.8rem; }
+.msg .diagram { background: var(--surface); }
+.diagram-title { font-weight: 650; margin-bottom: 0.3rem; }
+.diagram-caption { margin: 0.4rem 0 0; }
+.diagram-canvas svg { width: 100%; height: auto; display: block; max-height: 480px; }
+.dg-grid { stroke: var(--border); stroke-width: 1; }
+.dg-axis { stroke: var(--muted); stroke-width: 1.4; }
+.dg-tick { font-size: 11px; fill: var(--muted); }
+.dg-axis-label { font-size: 12px; fill: var(--text); font-style: italic; }
+.dg-curve { fill: none; stroke-width: 2.4; stroke-linejoin: round; }
+.dg-circle { fill: none; stroke-width: 2; stroke-dasharray: 6 4; }
+.dg-vector { stroke-width: 2.4; }
+.dg-point { fill: var(--text); stroke: var(--surface); stroke-width: 1.5; }
+.dg-label { font-size: 12px; fill: var(--text); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.dg-arrowhead { fill: var(--muted); }
+.dg-node { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.dg-node-text { font-size: 12.5px; fill: var(--text); }
+.dg-edge { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.dg-edge-label { font-size: 11px; fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; }
+.s0 { stroke: var(--s0); } .s1 { stroke: var(--s1); } .s2 { stroke: var(--s2); }
+.s3 { stroke: var(--s3); } .s4 { stroke: var(--s4); } .s5 { stroke: var(--s5); }
+.dg-arrowhead.f0 { fill: var(--s0); } .dg-arrowhead.f1 { fill: var(--s1); } .dg-arrowhead.f2 { fill: var(--s2); }
+.dg-arrowhead.f3 { fill: var(--s3); } .dg-arrowhead.f4 { fill: var(--s4); } .dg-arrowhead.f5 { fill: var(--s5); }
+.diagram-canvas svg.flow { max-width: 640px; margin: 0 auto; }
+.dg-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; padding: 0; margin: 0.4rem 0 0; font-size: 0.85rem; }
+.dg-legend li { display: flex; align-items: center; gap: 0.4rem; }
+.dg-swatch { width: 18px; height: 0; border-top: 3px solid; display: inline-block; }
+.dg-swatch.s0 { border-color: var(--s0); } .dg-swatch.s1 { border-color: var(--s1); } .dg-swatch.s2 { border-color: var(--s2); }
+.dg-swatch.s3 { border-color: var(--s3); } .dg-swatch.s4 { border-color: var(--s4); } .dg-swatch.s5 { border-color: var(--s5); }
+.explain-panel > * { flex-shrink: 0; }
