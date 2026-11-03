@@ -104,6 +104,22 @@ async function chat(
   }
 }
 
+/**
+ * Ollama turns the JSON schema into a grammar. Drop parts that add nothing but make
+ * that grammar huge or unsupported: the $schema tag and zod's ±2^53 integer bounds.
+ */
+export function simplifySchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(simplifySchema);
+  if (!node || typeof node !== "object") return node;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(node)) {
+    if (k === "$schema") continue;
+    if ((k === "minimum" || k === "maximum") && typeof v === "number" && Math.abs(v) >= Number.MAX_SAFE_INTEGER) continue;
+    out[k] = simplifySchema(v);
+  }
+  return out;
+}
+
 const OUTPUT_TOKENS: Record<StructuredRequest<z.ZodType>["effort"], number> = {
   low: 2_048,
   medium: 6_144,
@@ -117,7 +133,7 @@ export async function ollamaGenerate<S extends z.ZodType>({ content, task, schem
   const user = `${task}\n\nReply with JSON only, matching the required schema. Every field must be filled in.`;
   const numPredict = OUTPUT_TOKENS[effort];
   const numCtx = contextFor(system + user, numPredict);
-  const format = z.toJSONSchema(schema);
+  const format = simplifySchema(z.toJSONSchema(schema));
 
   // Small local models occasionally produce JSON that doesn't fit; one retry usually fixes it.
   for (let attempt = 1; ; attempt++) {

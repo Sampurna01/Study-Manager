@@ -90,6 +90,24 @@ describe("API", () => {
     expect(quiz.body.questions[1]).toMatchObject({ type: "short_answer", options: [], correctOption: -1 });
   });
 
+  it("limits topic ids to the real ones and maps topic names back to ids", async () => {
+    const q = { type: "multiple_choice", options: ["a", "b", "c", "d"], correctOption: 0, modelAnswer: "m", explanation: "e", difficulty: "recall" };
+    generateStructured.mockResolvedValueOnce({
+      questions: [
+        { ...q, prompt: "by id", topicId: "cells" },
+        { ...q, prompt: "by name", topicId: "DNA" },
+        { ...q, prompt: "by name, different case", topicId: "Cells " },
+      ],
+    });
+    const res = await request(app).post("/api/quiz").send({ content: "x", topics, count: 3 });
+    expect(res.body.questions.map((x: { topicId: string }) => x.topicId)).toEqual(["cells", "dna", "cells"]);
+    // The schema sent to the model only allows the real ids.
+    const { schema } = generateStructured.mock.calls.at(-1)![0];
+    const ok = { questions: [{ ...q, prompt: "p", topicId: "dna" }] };
+    expect(schema.safeParse(ok).success).toBe(true);
+    expect(schema.safeParse({ questions: [{ ...q, prompt: "p", topicId: "DNA" }] }).success).toBe(false);
+  });
+
   it("gives empty answers zero without calling the AI", async () => {
     generateStructured.mockClear();
     const res = await request(app).post("/api/grade").send({ content: "x", prompt: "p", modelAnswer: "m", studentAnswer: "  " });

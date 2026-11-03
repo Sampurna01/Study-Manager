@@ -1,13 +1,14 @@
 import type { z } from "zod/v4";
+import { z as zod } from "zod/v4";
 import {
   ClassificationSchema,
+  FlashcardDraftSchema,
+  QuestionSchema,
   SyllabusSchema,
   type Classification,
   type Syllabus,
   type SyllabusRequestSchema,
-  FlashcardSetSchema,
   GradeSchema,
-  QuizSchema,
   StudyGuideSchema,
   type FlashcardRequestSchema,
   type GradeRequestSchema,
@@ -68,11 +69,42 @@ export function normalizeGuide(guide: StudyGuide): StudyGuide {
   };
 }
 
+const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/**
+ * Map whatever the model wrote for a topic back to a real topic id. Smaller local
+ * models sometimes write the topic's name or a near-miss instead of its id.
+ */
+export function topicResolver(topics: { id: string; name: string }[]) {
+  const lookup = new Map<string, string>();
+  for (const t of topics) {
+    lookup.set(t.id, t.id);
+    lookup.set(t.id.toLowerCase(), t.id);
+    lookup.set(t.name.toLowerCase().trim(), t.id);
+    lookup.set(slugify(t.name), t.id);
+  }
+  return (raw: string): string | null => {
+    const key = raw.trim();
+    const hit = lookup.get(key) ?? lookup.get(key.toLowerCase()) ?? lookup.get(slugify(key));
+    if (hit) return hit;
+    if (topics.length === 1) return topics[0].id;
+    // A partial match, e.g. "Membranes" for "transport-across-membranes".
+    const partial = topics.filter((t) => slugify(t.name).includes(slugify(key)) || slugify(key).includes(slugify(t.name)));
+    return partial.length === 1 ? partial[0].id : null;
+  };
+}
+
+/** Restrict topicId to the real ids, so structured output can't invent one. */
+function topicIdEnum(topics: { id: string }[]) {
+  const ids = topics.map((t) => t.id);
+  return ids.length ? zod.enum(ids as [string, ...string[]]) : zod.string();
+}
+
 export async function buildFlashcards(req: FlashcardRequest): Promise<FlashcardDraft[]> {
-  const ids = new Set(req.topics.map((t) => t.id));
+  const resolve = topicResolver(req.topics);
   const { cards } = await generateStructured({
     content: req.content,
-    schema: FlashcardSetSchema,
+    schema: zod.object({ cards: zod.array(FlashcardDraftSchema.extend({ topicId: topicIdEnum(req.topics) })) }),
     effort: "medium",
     task: `Write ${req.count} flashcards covering these topics (spread them in proportion to how much material each topic has):
 ${topicList(req.topics)}
@@ -83,7 +115,9 @@ Rules:
 - topicId must be one of the ids above.
 ${req.existingFronts.length ? `- The student already has these cards; don't duplicate them:\n${req.existingFronts.map((f) => `  * ${f}`).join("\n")}` : ""}`,
   });
-  return cards.filter((c) => ids.has(c.topicId) && c.front.trim() && c.back.trim());
+  return cards
+    .map((c) => ({ ...c, topicId: resolve(c.topicId) ?? "" }))
+    .filter((c) => c.topicId && c.front.trim() && c.back.trim());
 }
 
 const MODE_GUIDANCE: Record<QuizRequest["mode"], string> = {
@@ -94,10 +128,10 @@ const MODE_GUIDANCE: Record<QuizRequest["mode"], string> = {
 };
 
 export async function buildQuiz(req: QuizRequest): Promise<Question[]> {
-  const ids = new Set(req.topics.map((t) => t.id));
+  const resolve = topicResolver(req.topics);
   const { questions } = await generateStructured({
     content: req.content,
-    schema: QuizSchema,
+    schema: zod.object({ questions: zod.array(QuestionSchema.extend({ topicId: topicIdEnum(req.topics) })) }),
     effort: "medium",
     task: `Write a ${req.count}-question quiz on these topics:
 ${topicList(req.topics)}
@@ -110,7 +144,8 @@ ${MODE_GUIDANCE[req.mode]}
 - topicId must be one of the ids above.`,
   });
   return questions
-    .filter((q) => ids.has(q.topicId))
+    .map((q) => ({ ...q, topicId: resolve(q.topicId) ?? "" }))
+    .filter((q) => q.topicId && q.prompt.trim())
     .map((q) => {
       if (q.type === "multiple_choice" && (q.options.length < 2 || q.correctOption < 0 || q.correctOption >= q.options.length)) {
         return { ...q, type: "short_answer" as const, options: [], correctOption: -1 };

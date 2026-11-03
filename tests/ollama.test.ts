@@ -54,6 +54,13 @@ describe("Ollama provider", () => {
     expect(body.messages[0].content).toContain("Cells are small.");
   });
 
+  it("strips the parts of the schema that bloat Ollama's grammar", () => {
+    const out = mod.simplifySchema(z.toJSONSchema(z.object({ n: z.number().int(), s: z.string() }))) as any;
+    expect(out.$schema).toBeUndefined();
+    expect(out.properties.n).toEqual({ type: "integer" });
+    expect(out.required).toEqual(["n", "s"]);
+  });
+
   it("retries once when the model's JSON doesn't fit the schema", async () => {
     replies.push(() => ({ chunks: stream('{"answer":"x"}') }));
     replies.push(() => ({ chunks: stream('{"answer":"x","score":1}') }));
