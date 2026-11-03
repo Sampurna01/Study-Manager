@@ -91,7 +91,7 @@ describe("API", () => {
   });
 
   it("limits topic ids to the real ones and maps topic names back to ids", async () => {
-    const q = { type: "multiple_choice", options: ["a", "b", "c", "d"], correctOption: 0, modelAnswer: "m", explanation: "e", difficulty: "recall" };
+    const q = { type: "multiple_choice", options: ["a", "b", "c", "d"], correctOption: 0, hints: [], solutionSteps: [], modelAnswer: "m", explanation: "e", difficulty: "recall" };
     generateStructured.mockResolvedValueOnce({
       questions: [
         { ...q, prompt: "by id", topicId: "cells" },
@@ -127,6 +127,35 @@ describe("API", () => {
     // The schema sent to the model doesn't allow an empty list.
     const { schema } = generateStructured.mock.calls.at(-1)![0];
     expect(schema.safeParse({ questions: [] }).success).toBe(false);
+  });
+
+  it("asks for problems in problem-solving quizzes and keeps their solutions", async () => {
+    generateStructured.mockResolvedValueOnce({
+      questions: [
+        {
+          topicId: "cells", type: "problem", prompt: "Find $\\det(A)$", options: ["junk"], correctOption: 2,
+          hints: ["Use ad - bc"], solutionSteps: ["ad - bc = 4 - 6", "= -2"], modelAnswer: "-2", explanation: "e", difficulty: "application",
+        },
+        { topicId: "dna", type: "multiple_choice", prompt: "p", options: ["a", "b", "c", "d"], correctOption: 1, hints: ["x"], solutionSteps: [], modelAnswer: "b", explanation: "e", difficulty: "recall" },
+      ],
+    });
+    const res = await request(app).post("/api/quiz").send({ content: "x", topics, count: 2, style: "problems" });
+    expect(res.status).toBe(200);
+    const [problem, mcq] = res.body.questions;
+    expect(problem).toMatchObject({ type: "problem", options: [], correctOption: -1, hints: ["Use ad - bc"], solutionSteps: ["ad - bc = 4 - 6", "= -2"] });
+    expect(mcq.hints).toEqual([]);
+    expect(generateStructured.mock.calls.at(-1)![0].task).toMatch(/mostly "problem"/);
+  });
+
+  it("grades problems against the worked solution and the student's working", async () => {
+    generateStructured.mockResolvedValueOnce({ score: 0.5, verdict: "partially_correct", feedback: "f", missingPoints: [] });
+    const res = await request(app)
+      .post("/api/grade")
+      .send({ content: "x", prompt: "Find det", modelAnswer: "-2", studentAnswer: "2", solutionSteps: ["4 - 6", "-2"], working: "4-6=2" });
+    expect(res.body.grade.score).toBe(0.5);
+    const task = generateStructured.mock.calls.at(-1)![0].task;
+    expect(task).toContain("<student_working>4-6=2</student_working>");
+    expect(task).toContain("mathematically equivalent");
   });
 
   it("gives empty answers zero without calling the AI", async () => {

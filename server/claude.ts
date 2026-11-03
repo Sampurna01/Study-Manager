@@ -83,6 +83,7 @@ export async function claudeGenerate<S extends z.ZodType>({
   content,
   task,
   schema,
+  validate,
   effort,
   maxTokens = 64000,
 }: StructuredRequest<S>): Promise<z.infer<S>> {
@@ -107,9 +108,9 @@ export async function claudeGenerate<S extends z.ZodType>({
     } catch {
       throw new AIError("Claude returned malformed JSON. Please try again.");
     }
-    const parsed = schema.safeParse(json);
+    const parsed = (validate ?? schema).safeParse(json);
     if (!parsed.success) throw new AIError("Claude's response didn't match the expected format. Please try again.");
-    return parsed.data;
+    return parsed.data as z.infer<S>;
   } catch (err) {
     throw toClaudeError(err);
   }

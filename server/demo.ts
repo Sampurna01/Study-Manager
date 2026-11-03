@@ -128,13 +128,30 @@ export function demoQuiz(req: z.infer<typeof QuizRequestSchema>): Question[] {
     const sentence = sentencesFor(req.content, t.name)[Math.floor(i / topics.length)];
     const c = sentence && cloze(sentence);
     if (!c) continue;
-    if (questions.length % 3 === 2) {
+    // Demo "problems" are fill-in exercises; real problems need a real model.
+    const wantProblem = req.style === "problems" ? questions.length % 3 !== 1 : req.style === "balanced" && questions.length % 4 === 3;
+    if (wantProblem) {
+      questions.push({
+        topicId: t.id,
+        type: "problem",
+        prompt: `Complete the statement and explain each step: "${c.front.replace("Fill in the blank: ", "")}"`,
+        options: [],
+        correctOption: -1,
+        hints: [`The missing word starts with "${c.back[0]}".`, `It has ${c.back.length} letters.`],
+        solutionSteps: [`Find the part of the notes on ${t.name}.`, `The full statement is: "${sentence}"`],
+        modelAnswer: c.back,
+        explanation: `From the material on ${t.name}.`,
+        difficulty: "application",
+      });
+    } else if (questions.length % 3 === 2 && req.style !== "problems") {
       questions.push({
         topicId: t.id,
         type: "short_answer",
         prompt: `In your own words, explain: "${sentence}"`,
         options: [],
         correctOption: -1,
+        hints: [],
+        solutionSteps: [],
         modelAnswer: sentence,
         explanation: `From the material on ${t.name}.`,
         difficulty: "understanding",
@@ -151,6 +168,8 @@ export function demoQuiz(req: z.infer<typeof QuizRequestSchema>): Question[] {
         prompt: c.front.replace("Fill in the blank: ", "Which word completes the sentence? "),
         options,
         correctOption: correct,
+        hints: [],
+        solutionSteps: [],
         modelAnswer: c.back,
         explanation: `The original sentence: "${sentence}"`,
         difficulty: "recall",

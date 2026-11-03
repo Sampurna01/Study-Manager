@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import { splitMath, Tex } from "../../MathText";
 
 export interface GlossaryEntry {
   term: string;
@@ -35,42 +36,54 @@ export function GlossaryText({
   active: string | null;
   onToggle: (key: string | null) => void;
 }) {
-  if (!matcher) return <>{text}</>;
   const out: ReactNode[] = [];
   const seen = new Set<string>();
-  let last = 0;
-  matcher.regex.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = matcher.regex.exec(text))) {
-    const entry = matcher.byLower.get(m[0].toLowerCase());
-    if (!entry || seen.has(entry.term)) continue;
-    seen.add(entry.term);
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const key = `${id}:${entry.term}`;
-    const open = active === key;
-    out.push(
-      <span key={key} className="term-wrap">
-        <button
-          type="button"
-          className={`term ${open ? "open" : ""}`}
-          aria-expanded={open}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(open ? null : key);
-          }}
-        >
-          {m[0]}
-        </button>
-        {open && (
-          <span className="term-pop" role="tooltip">
-            <strong>{entry.term}</strong>
-            {entry.definition}
-          </span>
-        )}
-      </span>,
-    );
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) out.push(text.slice(last));
+  splitMath(text).forEach((part, p) => {
+    if ("tex" in part) {
+      out.push(<Tex key={`m${p}`} tex={part.tex} display={part.display} />);
+      return;
+    }
+    const segment = part.text;
+    if (!matcher) {
+      out.push(segment);
+      return;
+    }
+    let last = 0;
+    matcher.regex.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = matcher.regex.exec(segment))) {
+      const entry = matcher.byLower.get(m[0].toLowerCase());
+      if (!entry || seen.has(entry.term)) continue;
+      seen.add(entry.term);
+      if (m.index > last) out.push(segment.slice(last, m.index));
+      const key = `${id}:${entry.term}`;
+      const open = active === key;
+      out.push(
+        <span key={key} className="term-wrap">
+          <button
+            type="button"
+            className={`term ${open ? "open" : ""}`}
+            aria-expanded={open}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(open ? null : key);
+            }}
+          >
+            {m[0]}
+          </button>
+          {open && (
+            <span className="term-pop" role="tooltip">
+              <strong>{entry.term}</strong>
+              <span>
+                {splitMath(entry.definition).map((d, j) => ("tex" in d ? <Tex key={j} tex={d.tex} /> : d.text))}
+              </span>
+            </span>
+          )}
+        </span>,
+      );
+      last = m.index + m[0].length;
+    }
+    if (last < segment.length) out.push(segment.slice(last));
+  });
   return <>{out}</>;
 }

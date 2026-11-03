@@ -67,6 +67,14 @@ describe("Ollama provider", () => {
     await expect(mod.ollamaGenerate(req)).resolves.toEqual({ answer: "x", score: 1 });
   });
 
+  it("checks answers with the forgiving validator when one is given", async () => {
+    replies.push(() => ({ chunks: stream('{"topic":"other-topic"}') }));
+    const strict = z.object({ topic: z.enum(["cells"]) });
+    const loose = z.object({ topic: z.string() });
+    await expect(mod.ollamaGenerate({ ...req, schema: strict, validate: loose })).resolves.toEqual({ topic: "other-topic" });
+    expect(requests.at(-1).format.properties.topic.enum).toEqual(["cells"]);
+  });
+
   it("explains how to download a missing model", async () => {
     replies.push(() => ({ status: 404, json: { error: 'model "test-model" not found, try pulling it first' } }));
     await expect(mod.ollamaGenerate(req)).rejects.toThrow(/ollama pull test-model/);

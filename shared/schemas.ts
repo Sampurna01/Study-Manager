@@ -38,14 +38,20 @@ export type FlashcardDraft = z.infer<typeof FlashcardDraftSchema>;
 
 export const FlashcardSetSchema = z.object({ cards: z.array(FlashcardDraftSchema) });
 
+// Field order matters: models write fields in order, so the worked solution comes
+// before the final answer (the model "shows its work" before committing to an answer).
 export const QuestionSchema = z.object({
   topicId: z.string(),
-  type: z.enum(["multiple_choice", "short_answer"]),
-  prompt: z.string(),
-  options: z.array(z.string()).describe("Exactly 4 options for multiple_choice; empty for short_answer"),
-  correctOption: z.number().int().describe("0-based index of the correct option; -1 for short_answer"),
-  modelAnswer: z.string().describe("The ideal answer a strong student would give"),
-  explanation: z.string().describe("Why the answer is correct, referencing the course material"),
+  type: z.enum(["multiple_choice", "short_answer", "problem"]),
+  prompt: z.string().describe("The question. For a problem, give all the numbers/data needed. Write maths in LaTeX between $...$"),
+  options: z.array(z.string()).describe("Exactly 4 options for multiple_choice; empty otherwise"),
+  correctOption: z.number().int().describe("0-based index of the correct option; -1 unless multiple_choice"),
+  hints: z.array(z.string()).describe("For a problem: 1-3 progressive hints that don't give the answer away; empty otherwise"),
+  solutionSteps: z
+    .array(z.string())
+    .describe("For a problem: the full worked solution, one step per item, with every calculation shown; empty otherwise"),
+  modelAnswer: z.string().describe("The correct final answer (for a problem: the final result only)"),
+  explanation: z.string().describe("Why the answer is correct and the key idea or common mistake, referencing the course material"),
   difficulty: z.enum(["recall", "understanding", "application"]),
 });
 export type Question = z.infer<typeof QuestionSchema>;
@@ -153,13 +159,19 @@ export const QuizRequestSchema = z.object({
   topics: z.array(TopicRefSchema).min(1),
   count: z.number().int().min(1).max(30).default(8),
   mode: z.enum(["practice", "weak_spots", "exam"]).default("practice"),
+  style: z.enum(["balanced", "problems", "concepts"]).default("balanced"),
 });
+
+export type QuizStyle = "balanced" | "problems" | "concepts";
 
 export const GradeRequestSchema = z.object({
   content: z.string().min(1),
   prompt: z.string().min(1),
   modelAnswer: z.string().min(1),
   studentAnswer: z.string(),
+  /** For problems: the worked solution and the student's own working. */
+  solutionSteps: z.array(z.string()).default([]),
+  working: z.string().default(""),
 });
 
 export const TutorRequestSchema = z.object({

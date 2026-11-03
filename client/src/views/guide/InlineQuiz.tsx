@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { Course, Grade, Question } from "../../types";
 import type { Topic } from "../../../../shared/schemas";
 import { api } from "../../api";
+import { MathText } from "../../MathText";
+import { ProblemInput, WorkedSolution } from "../quiz/Problem";
+import { defaultQuizStyle } from "../../quizStyle";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 
@@ -9,6 +12,7 @@ interface Answer {
   choice?: number;
   grade?: Grade;
   score: number;
+  revealed?: boolean;
 }
 
 /** Three quick questions on one topic, answered right inside the study guide. */
@@ -24,7 +28,7 @@ export function InlineQuiz({ course, topic, mastery, set }: { course: Course; to
     setLoading(true);
     setError(null);
     try {
-      const qs = await api.quiz(course.content, [{ id: topic.id, name: topic.name, mastery }], 3, "practice");
+      const qs = await api.quiz(course.content, [{ id: topic.id, name: topic.name, mastery }], 3, "practice", defaultQuizStyle(course));
       if (!qs.length) throw new Error("No questions came back. Try again.");
       setQuestions(qs);
       setAnswers({});
@@ -76,7 +80,7 @@ export function InlineQuiz({ course, topic, mastery, set }: { course: Course; to
         return (
           <div key={i} className="iq">
             <p className="iq-prompt">
-              {i + 1}. {q.prompt}
+              {i + 1}. <MathText text={q.prompt} />
             </p>
             {q.type === "multiple_choice" ? (
               <div className="options compact">
@@ -90,11 +94,15 @@ export function InlineQuiz({ course, topic, mastery, set }: { course: Course; to
                       onClick={() => record(i, q, { choice: j, score: j === q.correctOption ? 1 : 0 })}
                     >
                       <span className="option-letter">{String.fromCharCode(65 + j)}</span>
-                      {opt}
+                      <span>
+                        <MathText text={opt} />
+                      </span>
                     </button>
                   );
                 })}
               </div>
+            ) : q.type === "problem" ? (
+              <ProblemInput question={q} content={course.content} answered={!!a} onAnswer={(ans) => record(i, q, ans)} compact />
             ) : (
               <div className="short">
                 <textarea
@@ -113,14 +121,21 @@ export function InlineQuiz({ course, topic, mastery, set }: { course: Course; to
             )}
             {a && (
               <div className={`feedback small ${a.score >= 0.8 ? "right" : a.score >= 0.4 ? "partial" : "wrong"}`}>
-                <strong>{a.score >= 0.8 ? "Correct" : a.score >= 0.4 ? "Partly correct" : "Not quite"}</strong>
-                {a.grade && <p>{a.grade.feedback}</p>}
-                {q.type === "short_answer" && (
+                <strong>{a.revealed ? "Solution shown" : a.score >= 0.8 ? "Correct" : a.score >= 0.4 ? "Partly correct" : "Not quite"}</strong>
+                {a.grade && (
                   <p>
-                    <em>Model answer:</em> {q.modelAnswer}
+                    <MathText text={a.grade.feedback} />
                   </p>
                 )}
-                <p className="muted">{q.explanation}</p>
+                {q.type === "short_answer" && (
+                  <p>
+                    <em>Model answer:</em> <MathText text={q.modelAnswer} />
+                  </p>
+                )}
+                {q.type === "problem" && <WorkedSolution question={q} />}
+                <p className="muted">
+                  <MathText text={q.explanation} />
+                </p>
               </div>
             )}
           </div>

@@ -449,3 +449,20 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
   .syllabus-head { flex-direction: column; }
   .schedule li { grid-template-columns: 1fr; gap: 0.3rem; }
 }
+
+/* ---------- Problem solving & maths ---------- */
+.style-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 1rem; }
+.problem { display: flex; flex-direction: column; gap: 0.2rem; }
+.compact-field { margin: 0.4rem 0; }
+.compact-field input { max-width: none; }
+.working { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92rem; }
+.hints { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+.hint { background: var(--mid-soft); padding: 0.5rem 0.75rem; border-radius: 8px; margin: 0; }
+.worked { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; margin: 0.6rem 0; }
+.worked ol { margin: 0.4rem 0; padding-left: 1.4rem; }
+.worked li { margin: 0.35rem 0; }
+.final-answer { margin: 0.4rem 0 0; }
+.math-display { display: block; overflow-x: auto; overflow-y: hidden; padding: 0.3rem 0; }
+.math-inline .katex { font-size: 1.05em; }
+.option > span:last-child { min-width: 0; overflow-x: auto; }
+.question .prompt .katex-display, .question .prompt .math-display { font-weight: normal; }

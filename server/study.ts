@@ -132,6 +132,8 @@ async function draftFlashcards(req: FlashcardRequest): Promise<unknown[]> {
   const { cards } = await generateStructured({
     content: req.content,
     schema: zod.object({ cards: zod.array(FlashcardDraftSchema.extend({ topicId: topicIdEnum(req.topics) })).min(1) }),
+    // Accept any topicId here; buildFlashcards maps it back to a real topic.
+    validate: zod.object({ cards: zod.array(FlashcardDraftSchema) }),
     effort: "medium",
     task: `Write ${req.count} flashcards covering these topics (spread them in proportion to how much material each topic has):
 ${topicList(req.topics)}
@@ -152,18 +154,33 @@ const MODE_GUIDANCE: Record<QuizRequest["mode"], string> = {
   exam: "Write exam-style questions like a final exam for this course would contain: mostly understanding and application, a few recall. Cover every topic listed.",
 };
 
+const STYLE_GUIDANCE: Record<QuizRequest["style"], string> = {
+  problems: `Question types: mostly "problem" (about three quarters), the rest multiple_choice.
+- A problem is a concrete exercise like the worked examples, exercises and past-exam questions in the material: compute, solve, find, prove, derive, design, analyse. Use specific numbers, matrices, functions or data, and keep it solvable by hand in 2-10 minutes.
+- Vary them: different sub-skills and methods, not the same exercise with new numbers.
+- For each problem, work it out yourself in solutionSteps first (every calculation shown, one step per item), check the result, then put only the final result in modelAnswer. Give 1-3 hints that point toward the method without giving the answer away.`,
+  balanced: `Question types: if the course is quantitative (maths, physics, engineering, chemistry, statistics, economics, programming...), make about half the questions "problem" (concrete exercises with specific numbers, worked out step by step in solutionSteps) and the rest multiple_choice and short_answer. For non-quantitative courses use about two thirds multiple_choice and one third short_answer, with a problem only where the material has exercises.`,
+  concepts: `Question types: no problems. About two thirds multiple_choice and one third short_answer (answerable in 1-4 sentences), testing definitions, ideas and reasoning.`,
+};
+
+/** Make each question internally consistent, whatever the model wrote. */
+export function cleanQuestion(q: Question): Question {
+  const base = { ...q, hints: q.hints ?? [], solutionSteps: q.solutionSteps ?? [] };
+  if (base.type === "multiple_choice") {
+    if (base.options.length >= 2 && base.correctOption >= 0 && base.correctOption < base.options.length) return { ...base, hints: [] };
+    return { ...base, type: "short_answer", options: [], correctOption: -1, hints: [] };
+  }
+  if (base.type === "problem") return { ...base, options: [], correctOption: -1 };
+  return { ...base, options: [], correctOption: -1, hints: [] };
+}
+
 export async function buildQuiz(req: QuizRequest): Promise<Question[]> {
   const resolve = topicResolver(req.topics);
   return generateList("questions", () => draftQuiz(req), (raw) =>
     (raw as Question[])
       .map((q) => ({ ...q, topicId: resolve(q.topicId) ?? "" }))
       .filter((q) => q.topicId && q.prompt?.trim())
-      .map((q) => {
-        if (q.type === "multiple_choice" && (q.options.length < 2 || q.correctOption < 0 || q.correctOption >= q.options.length)) {
-          return { ...q, type: "short_answer" as const, options: [], correctOption: -1 };
-        }
-        return q.type === "short_answer" ? { ...q, options: [], correctOption: -1 } : q;
-      }),
+      .map(cleanQuestion),
   );
 }
 
@@ -171,15 +188,25 @@ async function draftQuiz(req: QuizRequest): Promise<unknown[]> {
   const { questions } = await generateStructured({
     content: req.content,
     schema: zod.object({ questions: zod.array(QuestionSchema.extend({ topicId: topicIdEnum(req.topics) })).min(1) }),
-    effort: "medium",
+    // Accept any topicId (and missing hints/steps) here; buildQuiz repairs them.
+    validate: zod.object({
+      questions: zod.array(
+        QuestionSchema.extend({ hints: zod.array(zod.string()).default([]), solutionSteps: zod.array(zod.string()).default([]) }),
+      ),
+    }),
+    // Worked solutions are long, so problem-heavy quizzes get more room.
+    effort: req.style === "concepts" ? "medium" : "high",
     task: `Write a ${req.count}-question quiz on these topics:
 ${topicList(req.topics)}
 
 ${MODE_GUIDANCE[req.mode]}
 
-- About two thirds multiple_choice (exactly 4 options, one clearly correct, plausible distractors based on real misconceptions; vary the position of the correct option) and one third short_answer (answerable in 1-4 sentences).
-- For short_answer set options to [] and correctOption to -1.
-- explanation teaches: say why the right answer is right and, for multiple choice, why the tempting wrong answer is wrong.
+${STYLE_GUIDANCE[req.style]}
+
+- multiple_choice: exactly 4 options, one clearly correct, plausible distractors based on real misconceptions or typical calculation slips; vary the position of the correct option.
+- Fields that don't apply to a question type are empty: options [] and correctOption -1 unless multiple_choice; hints [] and solutionSteps [] unless problem.
+- Write mathematical notation in LaTeX between $...$ (e.g. $\\det(A) = ad - bc$, $\\begin{pmatrix}1 & 2\\\\ 3 & 4\\end{pmatrix}$). Don't use $ for anything else.
+- explanation teaches: the key idea, and for multiple choice why the tempting wrong answer is wrong.
 - topicId must be one of the ids above.
 - Write all ${req.count} questions; the "questions" list must not be empty.`,
   });
@@ -187,6 +214,7 @@ ${MODE_GUIDANCE[req.mode]}
 }
 
 export async function gradeAnswer(req: GradeRequest): Promise<Grade> {
+  if (req.solutionSteps.length) return gradeProblem(req);
   if (!req.studentAnswer.trim()) {
     return { score: 0, verdict: "incorrect", feedback: "No answer was given.", missingPoints: [] };
   }
@@ -257,4 +285,34 @@ ${
 }`,
   });
   return normalizeSyllabus(syllabus, new Set(req.topics.map((t) => t.id)));
+}
+
+async function gradeProblem(req: GradeRequest): Promise<Grade> {
+  if (!req.studentAnswer.trim() && !req.working.trim()) {
+    return { score: 0, verdict: "incorrect", feedback: "No answer was given.", missingPoints: [] };
+  }
+  const grade = await generateStructured({
+    content: req.content,
+    schema: GradeSchema,
+    effort: "medium",
+    maxTokens: 8000,
+    task: `Grade the student's solution to a problem.
+
+<problem>${req.prompt}</problem>
+<worked_solution>
+${req.solutionSteps.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+</worked_solution>
+<correct_final_answer>${req.modelAnswer}</correct_final_answer>
+<student_working>${req.working.trim() || "(none given)"}</student_working>
+<student_final_answer>${req.studentAnswer.trim() || "(none given)"}</student_final_answer>
+
+How to grade:
+- First check the student's final answer yourself. Count it correct if it is mathematically equivalent to the correct answer (e.g. 1/2 = 0.5 = 2/4, a different but valid form of an expression, eigenvectors scaled by a constant, small rounding differences).
+- If the worked solution above looks wrong, trust your own careful calculation instead.
+- Correct final answer: score 0.9-1. Wrong final answer but a correct method with a slip: about 0.4-0.7, depending on how far they got. Wrong method: 0-0.3.
+- feedback: 1-3 sentences to the student. If something is wrong, point to the first step where it went wrong. Use LaTeX between $...$ for maths.
+- missingPoints: the specific mistakes or missing steps (empty if none).
+score: 0-1. verdict: correct (>= 0.8), partially_correct (0.4-0.8), incorrect (< 0.4).`,
+  });
+  return { ...grade, score: Math.max(0, Math.min(1, grade.score)) };
 }

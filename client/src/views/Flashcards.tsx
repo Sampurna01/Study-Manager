@@ -4,6 +4,7 @@ import { api } from "../api";
 import { uid } from "../store";
 import { isDue, newSchedule, review, type Rating } from "../../../shared/srs";
 import { TopicPicker } from "./TopicPicker";
+import { MathText } from "../MathText";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 
@@ -131,8 +132,14 @@ export function Flashcards({ course, mastery, set }: { course: Course; mastery: 
               {names.get(current.topicId)} · {due.length} left{sessionDone ? ` · ${sessionDone} reviewed` : ""}
             </p>
             <div className={`flashcard ${showBack ? "flipped" : ""}`} onClick={() => setShowBack(true)}>
-              <div className="flashcard-front">{current.front}</div>
-              {showBack && <div className="flashcard-back">{current.back}</div>}
+              <div className="flashcard-front">
+              <MathText text={current.front} />
+            </div>
+              {showBack && (
+              <div className="flashcard-back">
+                <MathText text={current.back} />
+              </div>
+            )}
             </div>
             {showBack ? (
               <div className="ratings">
@@ -176,8 +183,12 @@ export function Flashcards({ course, mastery, set }: { course: Course; mastery: 
             {course.cards.map((c) => (
               <li key={c.id}>
                 <div>
-                  <strong>{c.front}</strong>
-                  <p>{c.back}</p>
+                  <strong>
+                    <MathText text={c.front} />
+                  </strong>
+                  <p>
+                    <MathText text={c.back} />
+                  </p>
                   <span className="muted small">
                     {names.get(c.topicId)} · {formatDue(c.schedule.due)}
                     {c.schedule.lapses ? ` · forgotten ${c.schedule.lapses}×` : ""}

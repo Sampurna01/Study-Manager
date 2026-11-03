@@ -1,4 +1,4 @@
-import type { StudyGuide, Question, Grade, Syllabus, SourceKind } from "../../shared/schemas";
+import type { StudyGuide, Question, Grade, Syllabus, SourceKind, QuizStyle } from "../../shared/schemas";
 import type { CardSchedule } from "../../shared/srs";
 import type { QuizAttempt } from "../../shared/mastery";
 
@@ -49,4 +49,6 @@ export interface Course {
   checked?: string[];
   /** Structure read from the course syllabus, if one was provided. */
   syllabus?: Syllabus;
+  /** The quiz question style the student last chose. */
+  quizStyle?: QuizStyle;
 }

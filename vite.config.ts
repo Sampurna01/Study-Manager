@@ -4,7 +4,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   root: "client",
   plugins: [react()],
-  build: { outDir: "../dist", emptyOutDir: true },
+  // KaTeX (maths rendering) makes the bundle larger than Vite's default warning size.
+  build: { outDir: "../dist", emptyOutDir: true, chunkSizeWarningLimit: 1500 },
   server: {
     port: 5173,
     proxy: { "/api": { target: `http://localhost:${process.env.PORT || 8787}`, changeOrigin: true } },

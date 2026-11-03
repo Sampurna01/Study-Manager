@@ -128,7 +128,7 @@ const OUTPUT_TOKENS: Record<StructuredRequest<z.ZodType>["effort"], number> = {
   max: 8_192,
 };
 
-export async function ollamaGenerate<S extends z.ZodType>({ content, task, schema, effort }: StructuredRequest<S>): Promise<z.infer<S>> {
+export async function ollamaGenerate<S extends z.ZodType>({ content, task, schema, validate, effort }: StructuredRequest<S>): Promise<z.infer<S>> {
   const system = `${BASE_INSTRUCTIONS}\n\n${courseBlock(content)}`;
   const user = `${task}\n\nReply with JSON only, matching the required schema. Every field must be filled in.`;
   const numPredict = OUTPUT_TOKENS[effort];
@@ -152,8 +152,8 @@ export async function ollamaGenerate<S extends z.ZodType>({ content, task, schem
     } catch {
       json = undefined;
     }
-    const parsed = json === undefined ? null : schema.safeParse(json);
-    if (parsed?.success) return parsed.data;
+    const parsed = json === undefined ? null : (validate ?? schema).safeParse(json);
+    if (parsed?.success) return parsed.data as z.infer<S>;
     if (attempt >= 2) throw new AIError("The local model's answer wasn't in the expected format. Please try again.", 502);
   }
 }

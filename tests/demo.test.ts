@@ -17,7 +17,7 @@ describe("demo mode", () => {
   it("produces cards and well-formed quiz questions", () => {
     const topics = demoGuide("", content).topics.map((t) => ({ id: t.id, name: t.name }));
     expect(demoFlashcards({ content, topics, count: 3, existingFronts: [] }).length).toBeGreaterThan(0);
-    for (const q of demoQuiz({ content, topics, count: 4, mode: "practice" })) {
+    for (const q of demoQuiz({ content, topics, count: 4, mode: "practice", style: "balanced" })) {
       if (q.type === "multiple_choice") {
         expect(q.options).toHaveLength(4);
         expect(q.options[q.correctOption]).toBe(q.modelAnswer);
@@ -26,7 +26,7 @@ describe("demo mode", () => {
   });
 
   it("grades by overlap", () => {
-    const g = demoGrade({ content, prompt: "p", modelAnswer: "Mitochondria produce ATP", studentAnswer: "mitochondria produce atp" });
+    const g = demoGrade({ content, prompt: "p", modelAnswer: "Mitochondria produce ATP", studentAnswer: "mitochondria produce atp", solutionSteps: [], working: "" });
     expect(g.verdict).toBe("correct");
   });
 });

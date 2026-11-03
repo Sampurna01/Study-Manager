@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { splitMath, Tex } from "./MathText";
 
 /** A small, safe Markdown renderer (no raw HTML) for tutor replies. */
 export function Markdown({ text }: { text: string }) {
@@ -24,7 +25,7 @@ export function Markdown({ text }: { text: string }) {
     if (heading) {
       const level = Math.min(4, heading[1].length + 2);
       const Tag = `h${level}` as "h3" | "h4" | "h5" | "h6";
-      blocks.push(<Tag key={key++}>{inline(heading[2])}</Tag>);
+      blocks.push(<Tag key={key++}>{rich(heading[2])}</Tag>);
       i++;
       continue;
     }
@@ -39,7 +40,7 @@ export function Markdown({ text }: { text: string }) {
       blocks.push(
         <List key={key++}>
           {items.map((it, j) => (
-            <li key={j}>{inline(it)}</li>
+            <li key={j}>{rich(it)}</li>
           ))}
         </List>,
       );
@@ -58,18 +59,28 @@ export function Markdown({ text }: { text: string }) {
     while (i < lines.length && lines[i].trim() && !/^(```|#{1,4}\s|\s*([-*]|\d+\.)\s+|---+\s*$)/.test(lines[i])) {
       para.push(lines[i++]);
     }
-    blocks.push(
-      <p key={key++}>
-        {para.map((p, j) => (
-          <Fragment key={j}>
-            {j > 0 && <br />}
-            {inline(p)}
-          </Fragment>
-        ))}
-      </p>,
-    );
+    // Whole paragraph at once so display maths can span lines.
+    blocks.push(<p key={key++}>{rich(para.join("\n"))}</p>);
   }
   return <div className="markdown">{blocks}</div>;
+}
+
+/** Inline Markdown plus $...$ maths; newlines in text become line breaks. */
+function rich(text: string): ReactNode[] {
+  return splitMath(text).map((part, i) =>
+    "tex" in part ? (
+      <Tex key={i} tex={part.tex} display={part.display} />
+    ) : (
+      <Fragment key={i}>
+        {part.text.split("\n").map((line, j) => (
+          <Fragment key={j}>
+            {j > 0 && <br />}
+            {inline(line)}
+          </Fragment>
+        ))}
+      </Fragment>
+    ),
+  );
 }
 
 function inline(text: string): ReactNode[] {

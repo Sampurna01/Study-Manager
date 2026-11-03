@@ -1,4 +1,4 @@
-import type { Classification, FlashcardDraft, Grade, Question, StudyGuide, Syllabus } from "../../shared/schemas";
+import type { Classification, FlashcardDraft, Grade, Question, QuizStyle, StudyGuide, Syllabus } from "../../shared/schemas";
 import { toDateKey } from "../../shared/plan";
 import type { ChatMessage } from "./types";
 
@@ -54,11 +54,11 @@ export const api = {
   flashcards: (content: string, topics: TopicRef[], count: number, existingFronts: string[]) =>
     post<{ cards: FlashcardDraft[] }>("/api/flashcards", { content, topics, count, existingFronts }).then((r) => r.cards),
 
-  quiz: (content: string, topics: TopicRef[], count: number, mode: "practice" | "weak_spots" | "exam") =>
-    post<{ questions: Question[] }>("/api/quiz", { content, topics, count, mode }).then((r) => r.questions),
+  quiz: (content: string, topics: TopicRef[], count: number, mode: "practice" | "weak_spots" | "exam", style: QuizStyle = "balanced") =>
+    post<{ questions: Question[] }>("/api/quiz", { content, topics, count, mode, style }).then((r) => r.questions),
 
-  grade: (content: string, prompt: string, modelAnswer: string, studentAnswer: string) =>
-    post<{ grade: Grade }>("/api/grade", { content, prompt, modelAnswer, studentAnswer }).then((r) => r.grade),
+  grade: (content: string, prompt: string, modelAnswer: string, studentAnswer: string, extra: { solutionSteps?: string[]; working?: string } = {}) =>
+    post<{ grade: Grade }>("/api/grade", { content, prompt, modelAnswer, studentAnswer, ...extra }).then((r) => r.grade),
 
   async tutor(content: string, messages: ChatMessage[], onText: (t: string) => void, signal: AbortSignal) {
     const res = await fetch("/api/tutor", {

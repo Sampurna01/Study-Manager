@@ -3,6 +3,10 @@ import type { Course, Grade, Question } from "../types";
 import { api } from "../api";
 import { uid } from "../store";
 import { TopicPicker } from "./TopicPicker";
+import { MathText } from "../MathText";
+import { ProblemInput, WorkedSolution, HINT_PENALTY } from "./quiz/Problem";
+import { QUIZ_STYLES, defaultQuizStyle } from "../quizStyle";
+import type { QuizStyle } from "../../../shared/schemas";
 
 type Set_ = (fn: (c: Course) => Course) => void;
 type Mode = "practice" | "weak_spots" | "exam";
@@ -10,8 +14,11 @@ type Mode = "practice" | "weak_spots" | "exam";
 interface Answer {
   choice?: number;
   text?: string;
+  working?: string;
   grade?: Grade;
   score: number;
+  hintsUsed?: number;
+  revealed?: boolean;
 }
 
 const MODES: { id: Mode; label: string; desc: string }[] = [
@@ -34,6 +41,7 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
     return ids.length ? ids : topics.map((x) => x.id);
   });
   const [count, setCount] = useState(8);
+  const [style, setStyle] = useState<QuizStyle>(() => defaultQuizStyle(course));
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [index, setIndex] = useState(0);
@@ -49,7 +57,8 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
     try {
       const ids = mode === "exam" ? topics.map((t) => t.id) : selected;
       const picked = topics.filter((t) => ids.includes(t.id)).map((t) => ({ id: t.id, name: t.name, mastery: mastery[t.id] ?? 0 }));
-      const qs = await api.quiz(course.content, picked, mode === "exam" ? Math.max(count, 12) : count, mode);
+      const qs = await api.quiz(course.content, picked, mode === "exam" ? Math.max(count, 12) : count, mode, style);
+      if (course.quizStyle !== style) set((c) => ({ ...c, quizStyle: style }));
       if (!qs.length) throw new Error("No questions came back. Try again.");
       setQuestions(qs);
       setAnswers([]);
@@ -113,6 +122,17 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
               </button>
             ))}
           </div>
+          <div className="style-picker">
+            <span className="small muted">Question style:</span>
+            <div className="segmented">
+              {QUIZ_STYLES.map((st) => (
+                <button key={st.id} className={style === st.id ? "active" : ""} onClick={() => setStyle(st.id)} title={st.desc}>
+                  {st.label}
+                </button>
+              ))}
+            </div>
+            <span className="small muted">{QUIZ_STYLES.find((st) => st.id === style)?.desc}</span>
+          </div>
           {mode !== "exam" && <TopicPicker topics={topics} mastery={mastery} selected={selected} onChange={setSelected} />}
           <div className="row">
             <label className="inline-field">
@@ -127,6 +147,9 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
               {loading ? "Writing questions…" : "Start quiz"}
             </button>
           </div>
+          {loading && style !== "concepts" && (
+            <p className="small muted">The AI works out a full solution for every problem, so this can take a minute or two.</p>
+          )}
           {error && <div className="banner error">{error}</div>}
         </div>
 
@@ -199,17 +222,25 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
           <div key={i} className={`card review-q ${(answers[i]?.score ?? 0) >= 0.8 ? "right" : "wrong"}`}>
             <p>
               <strong>
-                {i + 1}. {q.prompt}
+                {i + 1}. <MathText text={q.prompt} />
               </strong>
             </p>
             {q.type === "multiple_choice" ? (
               <p className="small">
-                Your answer: {answers[i]?.choice !== undefined ? q.options[answers[i].choice!] : "—"} · Correct: {q.options[q.correctOption]}
+                Your answer: {answers[i]?.choice !== undefined ? <MathText text={q.options[answers[i].choice!]} /> : "—"} · Correct:{" "}
+                <MathText text={q.options[q.correctOption]} />
+              </p>
+            ) : q.type === "problem" ? (
+              <p className="small">
+                Your answer: {answers[i]?.revealed ? "(solution shown)" : answers[i]?.text ? <MathText text={answers[i].text!} /> : "—"} · Correct:{" "}
+                <MathText text={q.modelAnswer} />
               </p>
             ) : (
               <p className="small">Your answer: {answers[i]?.text || "—"}</p>
             )}
-            <p className="small muted">{q.explanation}</p>
+            <p className="small muted">
+              <MathText text={q.explanation} />
+            </p>
           </div>
         ))}
       </div>
@@ -228,7 +259,9 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
         <p className="muted small">
           Question {index + 1} of {questions.length} · {names.get(q.topicId)} · {q.difficulty}
         </p>
-        <h2 className="prompt">{q.prompt}</h2>
+        <h2 className="prompt">
+          <MathText text={q.prompt} />
+        </h2>
 
         {q.type === "multiple_choice" ? (
           <div className="options">
@@ -242,11 +275,15 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
                   onClick={() => record(q, { choice: i, score: i === q.correctOption ? 1 : 0 })}
                 >
                   <span className="option-letter">{String.fromCharCode(65 + i)}</span>
-                  {opt}
+                  <span>
+                    <MathText text={opt} />
+                  </span>
                 </button>
               );
             })}
           </div>
+        ) : q.type === "problem" ? (
+          <ProblemInput key={index} question={q} content={course.content} answered={!!answer} onAnswer={(a) => record(q, a)} />
         ) : (
           <div className="short">
             <textarea
@@ -269,23 +306,43 @@ export function Quiz({ course, mastery, set }: { course: Course; mastery: Record
         {answer && (
           <div className={`feedback ${answer.score >= 0.8 ? "right" : answer.score >= 0.4 ? "partial" : "wrong"}`}>
             <strong>
-              {answer.score >= 0.8 ? "Correct" : answer.score >= 0.4 ? "Partly correct" : "Not quite"}
+              {answer.revealed
+                ? "Solution shown — have another go at a similar problem later"
+                : answer.score >= 0.8
+                  ? "Correct"
+                  : answer.score >= 0.4
+                    ? "Partly correct"
+                    : "Not quite"}
               {answer.grade && ` · ${Math.round(answer.score * 100)}%`}
             </strong>
-            {answer.grade && <p>{answer.grade.feedback}</p>}
+            {!!answer.hintsUsed && !answer.revealed && (
+              <p className="small muted">
+                {answer.hintsUsed} hint{answer.hintsUsed === 1 ? "" : "s"} used (−{Math.round(answer.hintsUsed * HINT_PENALTY * 100)}%)
+              </p>
+            )}
+            {answer.grade && (
+              <p>
+                <MathText text={answer.grade.feedback} />
+              </p>
+            )}
             {answer.grade && answer.grade.missingPoints.length > 0 && (
               <ul>
                 {answer.grade.missingPoints.map((m) => (
-                  <li key={m}>{m}</li>
+                  <li key={m}>
+                    <MathText text={m} />
+                  </li>
                 ))}
               </ul>
             )}
             {q.type === "short_answer" && (
               <p>
-                <em>Model answer:</em> {q.modelAnswer}
+                <em>Model answer:</em> <MathText text={q.modelAnswer} />
               </p>
             )}
-            <p className="muted">{q.explanation}</p>
+            {q.type === "problem" && <WorkedSolution question={q} />}
+            <p className="muted">
+              <MathText text={q.explanation} />
+            </p>
             <button className="btn primary" onClick={next} autoFocus>
               {index + 1 < questions.length ? "Next question" : "See results"}
             </button>
