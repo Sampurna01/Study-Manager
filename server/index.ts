@@ -4,8 +4,11 @@ import { DEMO } from "./demo";
 import { MODEL, PROVIDER } from "./ai";
 
 const port = Number(process.env.PORT) || 8787;
+// Only this computer can reach the app (and Windows doesn't show a firewall prompt).
+// Set HOST=0.0.0.0 to allow other devices on your network.
+const host = process.env.HOST || "127.0.0.1";
 
-createApp().listen(port, () => {
+createApp().listen(port, host, () => {
   console.log(`Study Manager API listening on http://localhost:${port}`);
   if (DEMO) {
     console.log("Running in DEMO mode (no AI calls).");

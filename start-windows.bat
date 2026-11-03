@@ -21,6 +21,14 @@ if not exist node_modules (
   )
 )
 
+rem If Study Manager is already running in the background, just open it.
+netstat -ano | findstr /r /c:":5173 .*LISTENING" >nul
+if not errorlevel 1 (
+  echo Study Manager is already running. Opening it in your browser...
+  start "" http://localhost:5173
+  exit /b 0
+)
+
 rem Open the browser a few seconds after the app starts.
 start "" /b cmd /c "timeout /t 6 /nobreak >nul & start http://localhost:5173"
 

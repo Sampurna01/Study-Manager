@@ -33,7 +33,9 @@ You need **Node.js 20+** (from [nodejs.org](https://nodejs.org)) and **Ollama** 
    ```
 3. Open **http://localhost:5173**.
 
-**Shortcut:** after the first setup you can just double-click **`start-windows.bat`** (Windows) or **`start-mac.command`** (Mac) in the project folder. It installs anything missing, starts the app and opens your browser. Keep that window open while you study; close it to stop the app.
+**Always on (Windows):** double-click **`install-windows.bat`** once. Study Manager then runs invisibly in the background every time you log in, so you just open **http://localhost:5173** (or the *Study Manager* icon on your desktop) like a website. Use **`update-windows.bat`** to get updates and **`uninstall-windows.bat`** to turn background start off. Your courses are kept either way.
+
+**Shortcut:** to start it by hand instead, double-click **`start-windows.bat`** (Windows) or **`start-mac.command`** (Mac). Keep that window open while you study; close it to stop the app.
 
 The local model is slower than a cloud AI. Building a study guide can take a few minutes, especially on the first run while the model loads.
 
