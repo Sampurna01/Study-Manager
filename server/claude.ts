@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod/v4";
 import { AIError } from "./errors";
+import { repairJsonLatex, repairStrings } from "../shared/latex";
 import { BASE_INSTRUCTIONS, TUTOR_INSTRUCTIONS, courseBlock } from "./prompts";
 import type { StructuredRequest, TutorMessage } from "./ai-types";
 
@@ -104,7 +105,7 @@ export async function claudeGenerate<S extends z.ZodType>({
     const text = finalText(message);
     let json: unknown;
     try {
-      json = JSON.parse(text);
+      json = repairStrings(JSON.parse(repairJsonLatex(text)));
     } catch {
       throw new AIError("Claude returned malformed JSON. Please try again.");
     }

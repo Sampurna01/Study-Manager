@@ -1,6 +1,7 @@
 import { useId, useMemo, type ReactNode } from "react";
 import type { Diagram as DiagramData } from "../../shared/diagram";
 import { tryCompile } from "../../shared/expr";
+import { repairDecodedLatex } from "../../shared/latex";
 
 const W = 560;
 const PAD = { left: 48, right: 20, top: 16, bottom: 40 };
@@ -15,7 +16,7 @@ export function plainLabel(s: string): string {
   };
   const sub: Record<string, string> = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉", n: "ₙ", k: "ₖ", i: "ᵢ" };
   const sup: Record<string, string> = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", n: "ⁿ", "-": "⁻", "+": "⁺" };
-  return s
+  return repairDecodedLatex(s)
     .replace(/\$/g, "")
     .replace(/\\(?:mathrm|text|mathbf)\{([^}]*)\}/g, "$1")
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "($1)/($2)")

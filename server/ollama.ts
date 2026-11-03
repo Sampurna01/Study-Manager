@@ -4,6 +4,7 @@
  */
 import { z } from "zod/v4";
 import { AIError } from "./errors";
+import { repairJsonLatex, repairStrings } from "../shared/latex";
 import { BASE_INSTRUCTIONS, TUTOR_INSTRUCTIONS, courseBlock } from "./prompts";
 import type { StructuredRequest, TutorMessage } from "./ai-types";
 
@@ -130,7 +131,7 @@ const OUTPUT_TOKENS: Record<StructuredRequest<z.ZodType>["effort"], number> = {
 
 export async function ollamaGenerate<S extends z.ZodType>({ content, task, schema, validate, effort }: StructuredRequest<S>): Promise<z.infer<S>> {
   const system = `${BASE_INSTRUCTIONS}\n\n${courseBlock(content)}`;
-  const user = `${task}\n\nReply with JSON only, matching the required schema. Every field must be filled in.`;
+  const user = `${task}\n\nReply with JSON only, matching the required schema. Every field must be filled in. Inside JSON strings, write every LaTeX backslash twice: "\\\\frac{a}{b}", "\\\\text{Im}", "\\\\int".`;
   const numPredict = OUTPUT_TOKENS[effort];
   const numCtx = contextFor(system + user, numPredict);
   const format = simplifySchema(z.toJSONSchema(schema));
@@ -148,7 +149,8 @@ export async function ollamaGenerate<S extends z.ZodType>({ content, task, schem
     );
     let json: unknown;
     try {
-      json = JSON.parse(text);
+      // Small models write LaTeX with single backslashes; repair before and after parsing.
+      json = repairStrings(JSON.parse(repairJsonLatex(text)));
     } catch {
       json = undefined;
     }

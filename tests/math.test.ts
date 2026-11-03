@@ -26,3 +26,24 @@ describe("splitMath", () => {
     expect(splitMath("Pay $5, then $x$ more")).toEqual([{ text: "Pay $5, then " }, { tex: "x", display: false }, { text: " more" }]);
   });
 });
+
+describe("bare LaTeX without $ delimiters", () => {
+  it("renders runs of LaTeX commands as maths", () => {
+    expect(splitMath("Evaluate the contour integral \\oint_C \\frac{f(z)}{z+1} \\, dz using the Cauchy Integral Formula.")).toEqual([
+      { text: "Evaluate the contour integral " },
+      { tex: "\\oint_C \\frac{f(z)}{z+1} \\, dz", display: false },
+      { text: " using the Cauchy Integral Formula." },
+    ]);
+  });
+
+  it("keeps trailing punctuation outside and ignores invalid LaTeX", () => {
+    expect(splitMath("so x = \\sqrt{2}.")).toEqual([{ text: "so " }, { tex: "x = \\sqrt{2}", display: false }, { text: "." }]);
+    expect(splitMath("broken \\frac{1 here")).toEqual([{ text: "broken \\frac{1 here" }]);
+  });
+
+  it("repairs text saved with damaged escapes", () => {
+    expect(splitMath("$\text{Im}\bigg(\frac{f(z)}{z+1}\bigg)$")).toEqual([
+      { tex: "\\text{Im}\\bigg(\\frac{f(z)}{z+1}\\bigg)", display: false },
+    ]);
+  });
+});
